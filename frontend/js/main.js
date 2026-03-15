@@ -1332,28 +1332,19 @@ function exportDailyReportNewExcel() {
         ['Сумма (итого):', tSum.toFixed(2)],
     ];
 
-    const toSummary = (rows) => {
-        let t = '<table><tbody>';
-        rows.forEach(row => {
-            t += '<tr>' + row.map((c, i) => `<td style="padding:3px 12px 3px 0;${i===0?'font-weight:bold':''}">${c}</td>`).join('') + '</tr>';
-        });
-        return t + '</tbody></table>';
-    };
+    // Настоящий XLSX через библиотеку
+    const wb = XLSX.utils.book_new();
 
-    const html = `<html><head><meta charset="UTF-8"></head><body>
-        <h2>Отчет за день: ${selectedDate}</h2>
-        <h3>Приход товаров</h3>${toTable(incomeRows)}
-        <br><h3>Расход товаров</h3>${toTable(expenseRows)}
-        <br><h3>Сводка</h3>${toSummary(summaryRows)}
-    </body></html>`;
+    const wsIncome = XLSX.utils.aoa_to_sheet(incomeRows);
+    XLSX.utils.book_append_sheet(wb, wsIncome, 'Приход');
 
-    const blob = new Blob([html], { type: 'application/vnd.ms-excel;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `Отчет_за_день_${selectedDate}.xlsx`;
-    a.click();
-    URL.revokeObjectURL(url);
+    const wsExpense = XLSX.utils.aoa_to_sheet(expenseRows);
+    XLSX.utils.book_append_sheet(wb, wsExpense, 'Расход');
+
+    const wsSummary = XLSX.utils.aoa_to_sheet(summaryRows);
+    XLSX.utils.book_append_sheet(wb, wsSummary, 'Сводка');
+
+    XLSX.writeFile(wb, `Отчет_за_день_${selectedDate}.xlsx`);
 }
 
 
