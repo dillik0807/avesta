@@ -1,0 +1,165 @@
+<!-- Свод Вагонов -->
+<div id="wagon-summary" class="content-section">
+    <h1 class="text-3xl font-bold mb-6">🚂 Свод Вагонов</h1>
+    
+    <div class="bg-white p-6 rounded-lg shadow mb-6">
+        <h2 class="text-xl font-bold mb-4">Фильтры</h2>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+                <label class="block text-sm font-medium mb-2">Период с:</label>
+                <input type="date" id="wagonSummaryDateFrom" class="w-full p-2 border rounded">
+            </div>
+            <div>
+                <label class="block text-sm font-medium mb-2">Период по:</label>
+                <input type="date" id="wagonSummaryDateTo" class="w-full p-2 border rounded">
+            </div>
+            <div class="flex items-end">
+                <button onclick="updateWagonSummary()" class="w-full bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
+                    Обновить
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div class="bg-white rounded-lg shadow overflow-x-auto">
+        <table class="w-full">
+            <thead class="bg-gray-50">
+                <tr>
+                    <th class="p-3 text-left">Вагон</th>
+                    <th class="p-3 text-left">Дата</th>
+                    <th class="p-3 text-left">Фирма</th>
+                    <th class="p-3 text-left">Склад</th>
+                    <th class="p-3 text-left">Товар</th>
+                    <th class="p-3 text-right">Кол-во по док</th>
+                    <th class="p-3 text-right">Кол-во факт</th>
+                    <th class="p-3 text-right">Разница</th>
+                    <th class="p-3 text-right">Вес (тонн)</th>
+                </tr>
+            </thead>
+            <tbody id="wagonSummaryTableBody">
+                <tr><td colspan="9" class="p-4 text-center text-gray-500">Загрузка...</td></tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Свод Остатков -->
+<div id="balance-summary" class="content-section">
+    <h1 class="text-3xl font-bold mb-6">📦 Свод Остатков</h1>
+    
+    <div class="bg-white p-6 rounded-lg shadow mb-6">
+        <h2 class="text-xl font-bold mb-4">Фильтры</h2>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+                <label class="block text-sm font-medium mb-2">Период с:</label>
+                <input type="date" id="balanceSummaryDateFrom" class="w-full p-2 border rounded">
+            </div>
+            <div>
+                <label class="block text-sm font-medium mb-2">Период по:</label>
+                <input type="date" id="balanceSummaryDateTo" class="w-full p-2 border rounded">
+            </div>
+            <div class="flex items-end">
+                <button onclick="updateBalanceSummary()" class="w-full bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
+                    Обновить
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div class="bg-white rounded-lg shadow overflow-x-auto">
+        <table class="w-full">
+            <thead class="bg-gray-50">
+                <tr>
+                    <th class="p-3 text-left">Склад</th>
+                    <th class="p-3 text-left">Товар</th>
+                    <th class="p-3 text-right">Приход (тонн)</th>
+                    <th class="p-3 text-right">Расход (тонн)</th>
+                    <th class="p-3 text-right">Остаток (тонн)</th>
+                </tr>
+            </thead>
+            <tbody id="balanceSummaryTableBody">
+                <tr><td colspan="5" class="p-4 text-center text-gray-500">Загрузка...</td></tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Отчёт по долгам -->
+<div id="debt-report" class="content-section">
+    <h1 class="text-3xl font-bold mb-6">💳 Отчёт по долгам</h1>
+    
+    <div class="bg-white p-6 rounded-lg shadow mb-6">
+        <h2 class="text-xl font-bold mb-4">Фильтры</h2>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+                <label class="block text-sm font-medium mb-2">Период с:</label>
+                <input type="date" id="debtReportDateFrom" class="w-full p-2 border rounded">
+            </div>
+            <div>
+                <label class="block text-sm font-medium mb-2">Период по:</label>
+                <input type="date" id="debtReportDateTo" class="w-full p-2 border rounded">
+            </div>
+            <div class="flex items-end">
+                <button onclick="updateDebtReport()" class="w-full bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
+                    Обновить
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div class="bg-white rounded-lg shadow overflow-x-auto">
+        <table class="w-full">
+            <thead class="bg-gray-50">
+                <tr>
+                    <th class="p-3 text-left">Клиент</th>
+                    <th class="p-3 text-right">Расход ($)</th>
+                    <th class="p-3 text-right">Погашено ($)</th>
+                    <th class="p-3 text-right">Долг ($)</th>
+                </tr>
+            </thead>
+            <tbody id="debtReportTableBody">
+                <tr><td colspan="4" class="p-4 text-center text-gray-500">Загрузка...</td></tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Итоги Вагонов -->
+<div id="wagon-totals" class="content-section">
+    <h1 class="text-3xl font-bold mb-6">📊 Итоги Вагонов</h1>
+    
+    <div class="bg-white p-6 rounded-lg shadow mb-6">
+        <h2 class="text-xl font-bold mb-4">Фильтры</h2>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+                <label class="block text-sm font-medium mb-2">Период с:</label>
+                <input type="date" id="wagonTotalsDateFrom" class="w-full p-2 border rounded">
+            </div>
+            <div>
+                <label class="block text-sm font-medium mb-2">Период по:</label>
+                <input type="date" id="wagonTotalsDateTo" class="w-full p-2 border rounded">
+            </div>
+            <div class="flex items-end">
+                <button onclick="updateWagonTotals()" class="w-full bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
+                    Обновить
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div class="bg-white rounded-lg shadow overflow-x-auto">
+        <table class="w-full">
+            <thead class="bg-gray-50">
+                <tr>
+                    <th class="p-3 text-left">Склад</th>
+                    <th class="p-3 text-left">Товар</th>
+                    <th class="p-3 text-right">Количество вагонов</th>
+                    <th class="p-3 text-right">Общий вес (тонн)</th>
+                </tr>
+            </thead>
+            <tbody id="wagonTotalsTableBody">
+                <tr><td colspan="4" class="p-4 text-center text-gray-500">Загрузка...</td></tr>
+            </tbody>
+        </table>
+    </div>
+</div>

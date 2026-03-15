@@ -1,0 +1,46 @@
+🚨 СРОЧНО! ВЫПОЛНИТЕ МИГРАЦИЮ БАЗЫ ДАННЫХ
+
+Проблема: У товара "Навои Карбамид" нет поля price в базе данных.
+
+РЕШЕНИЕ:
+
+1. Откройте Railway Dashboard: https://railway.app/
+2. Перейдите в ваш проект
+3. Откройте PostgreSQL сервис
+4. Нажмите "Query" или "Data"
+5. Выполните этот SQL запрос:
+
+ALTER TABLE products 
+ADD COLUMN IF NOT EXISTS price DECIMAL(10, 2) DEFAULT 0;
+
+6. Нажмите "Execute" или "Run"
+
+7. Проверьте что поле добавлено:
+
+SELECT * FROM products;
+
+8. Обновите цену для товара "Навои Карбамид":
+
+UPDATE products 
+SET price = 150 
+WHERE name = 'Навои Карбамид';
+
+9. Перезапустите backend сервер (если нужно)
+
+10. Обновите страницу в браузере (Ctrl+F5)
+
+11. Проверьте в консоли:
+
+console.log(window.appData.products);
+
+Теперь у товара должно быть поле price!
+
+АЛЬТЕРНАТИВА - через psql:
+
+psql postgresql://postgres:ZLnohOUbenSgQTFUdbQbbGfNHOWCGPTz@switchyard.proxy.rlwy.net:15057/railway
+
+Затем:
+
+ALTER TABLE products ADD COLUMN IF NOT EXISTS price DECIMAL(10, 2) DEFAULT 0;
+UPDATE products SET price = 150 WHERE name = 'Навои Карбамид';
+\q

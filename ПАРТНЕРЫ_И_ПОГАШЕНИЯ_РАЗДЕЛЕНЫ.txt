@@ -1,0 +1,37 @@
+✅ ПАРТНЕРЫ И ПОГАШЕНИЯ - РАЗДЕЛЕНЫ
+
+Миграция выполнена успешно!
+
+РЕЗУЛЬТАТ:
+- Таблица partners создана в базе данных
+- Индексы добавлены
+- Погашения хранятся в таблице payments
+- Партнеры хранятся в таблице partners
+
+СТРУКТУРА ТАБЛИЦЫ PARTNERS:
+- id (PRIMARY KEY)
+- year (год)
+- date (дата)
+- client_id (клиент)
+- somoni (сумма в сомони)
+- rate (курс)
+- amount (сумма в долларах)
+- notes (примечания)
+- user_id (пользователь)
+- created_at (дата создания)
+- edited_by (кто редактировал)
+- edited_at (дата редактирования)
+- deleted (удалено)
+
+API ENDPOINTS:
+- GET /api/partners - получить всех партнеров
+- POST /api/partners - добавить партнера
+- PUT /api/partners/:id - обновить партнера
+- DELETE /api/partners/:id - удалить партнера
+
+FRONTEND:
+- Партнеры используют window.appData.years[year].partners
+- Погашения используют window.appData.years[year].payments
+- Каждый раздел работает независимо
+
+Теперь можно перезапустить сервер и проверить работу!
