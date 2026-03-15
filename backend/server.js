@@ -10,6 +10,7 @@ const compression = require('compression');
 const rateLimit = require('express-rate-limit');
 require('dotenv').config();
 
+const path = require('path');
 const db = require('./db');
 const authRoutes = require('./routes/auth');
 const dataRoutes = require('./routes/data');
@@ -49,8 +50,10 @@ const limiter = rateLimit({
 });
 app.use('/api/', limiter);
 
-// Статические файлы
-app.use(express.static('../frontend'));
+// Статические файлы фронтенда
+const frontendPath = path.join(__dirname, '..', 'frontend');
+app.use(express.static(frontendPath));
+console.log('📁 Статика из:', frontendPath);
 
 // API Routes
 app.use('/api/auth', authRoutes);
