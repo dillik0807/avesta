@@ -67,8 +67,8 @@ router.post('/login', async (req, res) => {
                 username: user.username,
                 role: user.role,
                 warehouseGroup: warehouseGroup,
-                require_password_change: false,
-                is_blocked: false
+                require_password_change: user.require_password_change || false,
+                is_blocked: user.is_blocked || false
             }
         });
 
