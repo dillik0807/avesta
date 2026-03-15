@@ -2,8 +2,8 @@ name: Build AZOD APK
 
 on:
   push:
-    paths:
-      - 'android-app/**'
+    branches:
+      - main
   workflow_dispatch:
 
 jobs:
