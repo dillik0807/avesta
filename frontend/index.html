@@ -3,7 +3,18 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Система учёта товаров - PostgreSQL</title>
+    <title>Avesta 2026</title>
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#1e40af">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-title" content="Avesta 2026">
+    <link rel="apple-touch-icon" href="icons/icon-192.png">
+    <script>
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('/sw.js').catch(() => {});
+      }
+    </script>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <script src="js/api.js"></script>
@@ -2598,6 +2609,66 @@
                             <h4 class="font-medium mb-3">Статистика по годам</h4>
                             <div id="yearsStats" class="grid grid-cols-1 md:grid-cols-3 gap-4">
                                 <!-- Статистика будет добавлена динамически -->
+                            </div>
+                        </div>
+
+                        <!-- Перемещение/копирование данных между годами -->
+                        <div class="mt-6 pt-4 border-t">
+                            <h4 class="font-medium mb-3">🔄 Перемещение данных между годами</h4>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <!-- Копировать -->
+                                <div class="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                                    <h5 class="font-medium mb-3 text-blue-800">📋 Копировать данные</h5>
+                                    <p class="text-sm text-gray-600 mb-3">Данные останутся в исходном году и появятся в целевом</p>
+                                    <div class="flex gap-2 mb-3">
+                                        <div class="flex-1">
+                                            <label class="text-xs text-gray-500">Из года</label>
+                                            <input type="number" id="copyFromYear" placeholder="2025" class="w-full p-2 border rounded mt-1">
+                                        </div>
+                                        <div class="flex items-end pb-1 text-gray-400">→</div>
+                                        <div class="flex-1">
+                                            <label class="text-xs text-gray-500">В год</label>
+                                            <input type="number" id="copyToYear" placeholder="2026" class="w-full p-2 border rounded mt-1">
+                                        </div>
+                                    </div>
+                                    <div class="mb-3 text-sm">
+                                        <p class="text-gray-600 mb-1">Таблицы:</p>
+                                        <label class="flex items-center gap-2"><input type="checkbox" class="copy-table-check" value="income" checked> Приход</label>
+                                        <label class="flex items-center gap-2"><input type="checkbox" class="copy-table-check" value="expense" checked> Расход</label>
+                                        <label class="flex items-center gap-2"><input type="checkbox" class="copy-table-check" value="payments" checked> Погашения</label>
+                                        <label class="flex items-center gap-2"><input type="checkbox" class="copy-table-check" value="partners" checked> Партнёры</label>
+                                    </div>
+                                    <button onclick="copyYearData()" class="w-full bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
+                                        📋 Копировать
+                                    </button>
+                                </div>
+
+                                <!-- Переместить -->
+                                <div class="bg-orange-50 p-4 rounded-lg border border-orange-200">
+                                    <h5 class="font-medium mb-3 text-orange-800">✂️ Переместить данные</h5>
+                                    <p class="text-sm text-gray-600 mb-3">Данные удалятся из исходного года и перейдут в целевой</p>
+                                    <div class="flex gap-2 mb-3">
+                                        <div class="flex-1">
+                                            <label class="text-xs text-gray-500">Из года</label>
+                                            <input type="number" id="moveFromYear" placeholder="2025" class="w-full p-2 border rounded mt-1">
+                                        </div>
+                                        <div class="flex items-end pb-1 text-gray-400">→</div>
+                                        <div class="flex-1">
+                                            <label class="text-xs text-gray-500">В год</label>
+                                            <input type="number" id="moveToYear" placeholder="2026" class="w-full p-2 border rounded mt-1">
+                                        </div>
+                                    </div>
+                                    <div class="mb-3 text-sm">
+                                        <p class="text-gray-600 mb-1">Таблицы:</p>
+                                        <label class="flex items-center gap-2"><input type="checkbox" class="move-table-check" value="income" checked> Приход</label>
+                                        <label class="flex items-center gap-2"><input type="checkbox" class="move-table-check" value="expense" checked> Расход</label>
+                                        <label class="flex items-center gap-2"><input type="checkbox" class="move-table-check" value="payments" checked> Погашения</label>
+                                        <label class="flex items-center gap-2"><input type="checkbox" class="move-table-check" value="partners" checked> Партнёры</label>
+                                    </div>
+                                    <button onclick="moveYearData()" class="w-full bg-orange-600 text-white px-4 py-2 rounded hover:bg-orange-700">
+                                        ✂️ Переместить
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     </div>

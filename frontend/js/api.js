@@ -379,6 +379,24 @@ class API {
             body: JSON.stringify({ settings })
         });
     }
+
+    // ========================================
+    // 📅 УПРАВЛЕНИЕ ГОДАМИ
+    // ========================================
+
+    async copyYearData(from_year, to_year, tables) {
+        return this.request('/years/copy', {
+            method: 'POST',
+            body: JSON.stringify({ from_year, to_year, tables })
+        });
+    }
+
+    async moveYearData(from_year, to_year, tables) {
+        return this.request('/years/move', {
+            method: 'POST',
+            body: JSON.stringify({ from_year, to_year, tables })
+        });
+    }
 }
 
 // Создаем глобальный экземпляр API

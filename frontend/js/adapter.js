@@ -536,3 +536,49 @@ window.addEventListener('DOMContentLoaded', async () => {
 });
 
 console.log('✅ Адаптер загружен');
+
+// ========================================
+// 📅 КОПИРОВАНИЕ / ПЕРЕМЕЩЕНИЕ ПО ГОДАМ
+// ========================================
+
+window.copyYearData = async function() {
+    const fromYear = parseInt(document.getElementById('copyFromYear').value);
+    const toYear = parseInt(document.getElementById('copyToYear').value);
+    const tables = Array.from(document.querySelectorAll('.copy-table-check:checked')).map(cb => cb.value);
+
+    if (!fromYear || !toYear) return alert('Укажите оба года');
+    if (fromYear === toYear) return alert('Годы не могут совпадать');
+    if (tables.length === 0) return alert('Выберите хотя бы одну таблицу');
+
+    if (!confirm(`Копировать данные из ${fromYear} в ${toYear}?\nТаблицы: ${tables.join(', ')}`)) return;
+
+    try {
+        const result = await window.api.copyYearData(fromYear, toYear, tables);
+        const counts = Object.entries(result.copied).map(([t, c]) => `${t}: ${c}`).join(', ');
+        alert(`✅ Скопировано: ${counts}`);
+        await window.loadData();
+    } catch(e) {
+        alert('Ошибка: ' + e.message);
+    }
+};
+
+window.moveYearData = async function() {
+    const fromYear = parseInt(document.getElementById('moveFromYear').value);
+    const toYear = parseInt(document.getElementById('moveToYear').value);
+    const tables = Array.from(document.querySelectorAll('.move-table-check:checked')).map(cb => cb.value);
+
+    if (!fromYear || !toYear) return alert('Укажите оба года');
+    if (fromYear === toYear) return alert('Годы не могут совпадать');
+    if (tables.length === 0) return alert('Выберите хотя бы одну таблицу');
+
+    if (!confirm(`⚠️ ПЕРЕМЕСТИТЬ данные из ${fromYear} в ${toYear}?\nДанные удалятся из ${fromYear}!\nТаблицы: ${tables.join(', ')}`)) return;
+
+    try {
+        const result = await window.api.moveYearData(fromYear, toYear, tables);
+        const counts = Object.entries(result.moved).map(([t, c]) => `${t}: ${c}`).join(', ');
+        alert(`✅ Перемещено: ${counts}`);
+        await window.loadData();
+    } catch(e) {
+        alert('Ошибка: ' + e.message);
+    }
+};
