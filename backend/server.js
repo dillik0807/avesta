@@ -53,7 +53,12 @@ app.use('/api/', limiter);
 // Статические файлы фронтенда
 const frontendPath = path.join(__dirname, '..', 'frontend');
 app.use(express.static(frontendPath));
+
+// PWA файлы из backend/public (доступны на Railway)
+const publicPath = path.join(__dirname, 'public');
+app.use(express.static(publicPath));
 console.log('📁 Статика из:', frontendPath);
+console.log('📁 Public из:', publicPath);
 
 // API Routes
 app.use('/api/auth', authRoutes);
@@ -152,13 +157,13 @@ app.get('/health', (req, res) => {
 
 // Явные роуты для PWA файлов
 app.get('/manifest.json', (req, res) => {
-    res.sendFile(path.join(frontendPath, 'manifest.json'));
+    res.sendFile(path.join(publicPath, 'manifest.json'));
 });
 app.get('/sw.js', (req, res) => {
-    res.sendFile(path.join(frontendPath, 'sw.js'));
+    res.sendFile(path.join(publicPath, 'sw.js'));
 });
 app.get('/icons/:file', (req, res) => {
-    res.sendFile(path.join(frontendPath, 'icons', req.params.file));
+    res.sendFile(path.join(publicPath, 'icons', req.params.file));
 });
 
 // SPA fallback — все остальные GET запросы отдают index.html
