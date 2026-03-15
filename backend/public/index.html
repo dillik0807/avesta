@@ -1,0 +1,2945 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Avesta 2026</title>
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#1e40af">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-title" content="Avesta 2026">
+    <link rel="apple-touch-icon" href="icons/icon-192.png">
+    <script>
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('/sw.js').catch(() => {});
+      }
+    </script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="js/api.js"></script>
+    <script src="js/adapter.js"></script>
+    <script src="js/income.js"></script>
+    <script src="js/expense.js"></script>
+    <script src="js/payments.js"></script>
+    <script src="js/partners.js"></script>
+    <script src="js/reports.js"></script>
+    <script src="js/wagon-filters.js"></script>
+    <script src="js/balance-totals-filters.js"></script>
+    <script src="js/balance-totals-reports.js"></script>
+    <script src="js/stock-balance.js"></script>
+    <script src="js/daily-report.js"></script>
+    <script src="js/payments-report.js"></script>
+    <script src="js/expense-report.js"></script>
+    <script src="js/income-report.js"></script>
+    <script src="js/client-report.js"></script>
+    <script src="js/warehouse-report.js"></script>
+    <script src="js/client-card.js"></script>
+    <script src="js/invoice.js"></script>
+    <script src="js/cash-order.js"></script>
+    <script src="js/management.js"></script>
+    <style>
+        .hidden { display: none !important; }
+        .content-section { display: none; }
+        .content-section.active { display: block; }
+        
+        /* Стили для печати накладных и кассовых ордеров */
+        @media print {
+            body * {
+                visibility: hidden;
+            }
+            .print-content, .print-content * {
+                visibility: visible;
+            }
+            .print-content {
+                position: absolute;
+                left: 0;
+                top: 0;
+                width: 100%;
+            }
+            @page {
+                size: A4;
+                margin: 10mm;
+            }
+            .invoice-copy, .cash-order-copy {
+                page-break-after: always;
+                page-break-inside: avoid;
+            }
+            .invoice-copy:last-child, .cash-order-copy:last-child {
+                page-break-after: auto;
+            }
+        }
+    </style>
+    <style>
+        .multiselect-wrap { position: relative; }
+        .multiselect-btn {
+            width: 100%; padding: 8px; border: 1px solid #d1d5db; border-radius: 6px;
+            background: #fff; cursor: pointer; font-size: 0.875rem; -webkit-user-select: none; user-select: none;
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        }
+        .multiselect-btn:hover { border-color: #6b7280; }
+        .multiselect-dropdown {
+            position: absolute; top: 100%; left: 0; z-index: 999;
+            background: #fff; border: 1px solid #d1d5db; border-radius: 6px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15); min-width: 180px; max-height: 220px;
+            overflow-y: auto; padding: 4px 0;
+        }
+        .multiselect-dropdown label {
+            display: flex; align-items: center; gap: 8px;
+            padding: 6px 12px; cursor: pointer; font-size: 0.875rem; white-space: nowrap;
+        }
+        .multiselect-dropdown label:hover { background: #f3f4f6; }
+        .multiselect-dropdown input[type=checkbox] { width: 15px; height: 15px; cursor: pointer; }
+    </style>
+    <style>
+        /* ===== МОБИЛЬНАЯ АДАПТАЦИЯ ===== */
+
+        /* Фильтры — кнопка сворачивания на мобильных */
+        .filter-toggle-btn { display: none; }
+        @media (max-width: 767px) {
+            .filter-toggle-btn { display: inline-block; }
+            .filter-body { display: none; }
+            .filter-body.open { display: flex; }
+        }
+        @media (min-width: 768px) {
+            .filter-body { display: flex !important; }
+        }
+
+        /* Таблицы — горизонтальный скролл */
+        .table-responsive { overflow-x: auto; }
+        .bg-white.rounded-lg.shadow.overflow-x-auto { scroll-behavior: smooth; }
+
+        /* Sidebar открыт на мобильных */
+        #sidebar.open { transform: translateX(0); }
+
+        @media (max-width: 767px) {
+            /* Ячейки таблиц */
+            td.p-3, th.p-3 { padding: 6px 5px; font-size: 12px; }
+
+            /* Заголовки страниц */
+            h1.text-3xl { font-size: 1.3rem; margin-bottom: 0.75rem; }
+
+            /* Кнопки в строках таблицы */
+            .table-action-btn { padding: 3px 5px; font-size: 12px; }
+
+            /* Формы — одна колонка на мобильных */
+            form.grid { grid-template-columns: 1fr !important; }
+
+            /* Кнопки форм — полная ширина на мобильных */
+            form .md\:col-span-2, form .lg\:col-span-3 { grid-column: span 1 !important; }
+            form .md\:col-span-2 button, form .lg\:col-span-3 button {
+                width: 100%; margin-left: 0 !important; margin-top: 6px;
+            }
+
+            /* Карточки дашборда — 2 колонки */
+            .grid.grid-cols-2.md\:grid-cols-4 { grid-template-columns: repeat(2, 1fr) !important; }
+            .grid.grid-cols-2.md\:grid-cols-4 .bg-white.p-6 { padding: 12px; }
+            .grid.grid-cols-2.md\:grid-cols-4 h3 { font-size: 0.8rem; }
+            .grid.grid-cols-2.md\:grid-cols-4 .text-2xl { font-size: 1.2rem; }
+
+            /* Быстрые отчеты — вертикально */
+            .flex.flex-wrap.gap-4 button { width: 100%; justify-content: center; }
+
+            /* Мультиселект дропдаун */
+            .multiselect-dropdown { min-width: 140px; max-width: 90vw; }
+
+            /* Фильтры — вертикально */
+            .flex.flex-wrap.items-center.gap-3,
+            .flex.flex-wrap.items-center.gap-4 { flex-direction: column; align-items: stretch; }
+            .flex.flex-wrap.items-center.gap-3 > *,
+            .flex.flex-wrap.items-center.gap-4 > * { min-width: 0 !important; width: 100%; }
+            .flex.flex-wrap.items-center.gap-3 h3,
+            .flex.flex-wrap.items-center.gap-4 h3 { width: auto; }
+
+            /* Кнопки очистки фильтров */
+            .flex.items-end.gap-2 { width: 100%; }
+            .flex.items-end.gap-2 button { width: 100%; }
+
+            /* Основной контент — меньше padding */
+            .flex-1.p-3.md\:p-6 { padding: 8px !important; }
+
+            /* Белые карточки — меньше padding */
+            .bg-white.p-6.rounded-lg.shadow { padding: 12px; }
+            .bg-white.p-4.rounded-lg.shadow { padding: 10px; }
+
+            /* Кнопки действий в таблицах */
+            button.bg-blue-500, button.bg-yellow-500, button.bg-red-500,
+            button.bg-green-500, button.bg-gray-500 { padding: 4px 8px; font-size: 12px; }
+
+            /* Скрываем менее важные колонки в таблицах на мобильных */
+            .mobile-hide { display: none !important; }
+
+            /* Текст в кнопках — только иконки на мобильных */
+            .mobile-icon-only .btn-text { display: none; }
+
+            /* Навигация в сайдбаре — компактнее */
+            #sidebar nav button { padding: 8px; font-size: 14px; }
+            #sidebar { width: 240px; }
+
+            /* Sticky header на мобильных */
+            .md\:hidden.bg-blue-800 { position: sticky; top: 0; z-index: 50; }
+
+            /* Форма логина */
+            #loginScreen .max-w-md { margin: 16px; padding: 20px; }
+
+            /* Отчеты — таблицы */
+            .report-table td, .report-table th { padding: 5px 4px; font-size: 11px; }
+
+            /* Модальные окна */
+            .modal-content { margin: 8px; max-height: 90vh; overflow-y: auto; }
+
+            /* Toast уведомления */
+            #toastContainer { bottom: 16px; right: 8px; left: 8px; }
+            #toastContainer > div { width: 100%; }
+
+            /* Кнопки в заголовках секций */
+            .flex.justify-between.items-center { flex-wrap: wrap; gap: 8px; }
+        }
+
+        /* Планшеты (768px - 1023px) */
+        @media (min-width: 768px) and (max-width: 1023px) {
+            td.p-3, th.p-3 { padding: 8px 6px; font-size: 13px; }
+            form.grid { grid-template-columns: repeat(2, 1fr) !important; }
+            .multiselect-dropdown { min-width: 160px; }
+            .bg-white.p-6.rounded-lg.shadow { padding: 16px; }
+        }
+
+        @media (min-width: 768px) {
+            #mobileMenuBtn, #mobileOverlay { display: none !important; }
+            #sidebar { transform: translateX(0) !important; position: sticky !important; top: 0; height: 100vh; }
+        }
+
+        /* Touch-friendly — увеличиваем зоны нажатия */
+        @media (hover: none) and (pointer: coarse) {
+            button, select, input[type=checkbox], input[type=radio] { min-height: 36px; }
+            .multiselect-btn { min-height: 36px; }
+            nav button { min-height: 40px; }
+        }
+    </style>
+</head>
+<body class="bg-gray-100">
+    
+    <!-- Экран входа -->
+    <div id="loginScreen" class="min-h-screen flex items-center justify-center">
+        <div class="max-w-md w-full bg-white p-8 rounded-lg shadow-lg">
+            <h2 class="text-3xl font-bold mb-6 text-center text-blue-600">
+                🏢 Система учёта товаров
+            </h2>
+            <p class="text-center text-gray-600 mb-6">PostgreSQL версия</p>
+            
+            <form id="loginForm" class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium mb-2">Логин</label>
+                    <input type="text" id="username" 
+                        class="w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500" 
+                        placeholder="admin" required>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium mb-2">Пароль</label>
+                    <input type="password" id="password" 
+                        class="w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500" 
+                        placeholder="admin123" required>
+                </div>
+                <button type="submit" 
+                    class="w-full bg-blue-600 text-white p-3 rounded-lg hover:bg-blue-700 transition">
+                    Войти
+                </button>
+            </form>
+            
+            <div id="loginError" class="mt-4 p-3 bg-red-100 text-red-700 rounded hidden"></div>
+            
+            <div id="serverStatus" class="mt-4 p-3 bg-gray-100 rounded text-sm">
+                <div class="flex items-center justify-between">
+                    <span>Статус сервера:</span>
+                    <span id="serverStatusText" class="font-medium">Проверка...</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Главный интерфейс -->
+    <div id="mainInterface" class="hidden min-h-screen">
+
+        <!-- Мобильный хедер -->
+        <div class="md:hidden bg-blue-800 text-white flex items-center justify-between px-4 py-3 sticky top-0 z-40">
+            <button id="mobileMenuBtn" class="text-white text-2xl leading-none p-1">☰</button>
+            <span class="font-bold text-base">Система учёта</span>
+            <div class="flex items-center gap-2 text-sm">
+                <span id="mobileCurrentYearDisplay" class="opacity-75"></span>
+                <button id="logoutBtnMobile" class="bg-red-600 px-2 py-1 rounded text-xs">Выход</button>
+            </div>
+        </div>
+
+        <!-- Оверлей для закрытия меню -->
+        <div id="mobileOverlay" class="hidden fixed inset-0 bg-black bg-opacity-50 z-30 md:hidden"></div>
+
+        <div class="flex">
+            <!-- Боковое меню -->
+            <div id="sidebar" class="bg-blue-800 text-white w-64 min-h-screen p-4 fixed md:static top-0 left-0 h-full z-40 transform -translate-x-full md:translate-x-0 transition-transform duration-300 overflow-y-auto">
+                <h2 class="text-xl font-bold mb-4">Система учёта</h2>
+                
+                <div class="bg-blue-700 p-3 rounded mb-4">
+                    <div class="text-sm mb-2">
+                        <div>Пользователь: <span id="currentUserDisplay"></span></div>
+                        <div>Роль: <span id="currentRoleDisplay"></span></div>
+                    </div>
+                    <div class="text-xs">
+                        <div class="flex items-center gap-2">
+                            <div id="syncIndicator" class="w-2 h-2 bg-green-500 rounded-full"></div>
+                            <span id="syncText">PostgreSQL</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-blue-700 p-3 rounded mb-4">
+                    <label class="block text-sm mb-2">Рабочий год:</label>
+                    <div class="flex gap-2">
+                        <select id="yearSelector" onchange="switchYear(this.value)" class="flex-1 p-2 text-black rounded">
+                            <!-- Годы будут добавлены динамически -->
+                        </select>
+                        <button onclick="addNewYear()" class="bg-green-600 hover:bg-green-700 px-3 py-2 rounded text-sm" title="Добавить новый год">+</button>
+                    </div>
+                    <div class="text-xs mt-2 opacity-75">Текущий: <span id="currentYearDisplay">2026</span></div>
+                </div>
+
+                <nav class="space-y-2">
+                    <button class="menu-item w-full text-left p-2 hover:bg-blue-700 rounded" data-section="dashboard">
+                        📊 Главная
+                    </button>
+                    <button class="menu-item w-full text-left p-2 hover:bg-blue-700 rounded" data-section="income">
+                        📥 Приход
+                    </button>
+                    <button class="menu-item w-full text-left p-2 hover:bg-blue-700 rounded" data-section="expense">
+                        📤 Расход
+                    </button>
+                    <button class="menu-item w-full text-left p-2 hover:bg-blue-700 rounded" data-section="payments">
+                        💰 Погашения
+                    </button>
+                    <button class="menu-item w-full text-left p-2 hover:bg-blue-700 rounded" data-section="partners">
+                        🤝 Партнеры
+                    </button>
+                    <button class="menu-item w-full text-left p-2 hover:bg-blue-700 rounded" data-section="wagon-summary">
+                        🚂 Свод Вагонов
+                    </button>
+                    <button class="menu-item w-full text-left p-2 hover:bg-blue-700 rounded" data-section="balance-summary">
+                        📦 Свод Остатков
+                    </button>
+                    <button class="menu-item w-full text-left p-2 hover:bg-blue-700 rounded" data-section="debt-report">
+                        💳 Отчёт по долгам
+                    </button>
+                    <button class="menu-item w-full text-left p-2 hover:bg-blue-700 rounded" data-section="stock-balance">
+                        📦 Остатки складов
+                    </button>
+                    <button class="menu-item w-full text-left p-2 hover:bg-blue-700 rounded" data-section="wagon-totals">
+                        📊 Итоги Вагонов
+                    </button>
+                    <button class="menu-item w-full text-left p-2 hover:bg-blue-700 rounded" data-section="reports">
+                        📋 Отчёты
+                    </button>
+                    <button class="menu-item w-full text-left p-2 hover:bg-blue-700 rounded" data-section="management">
+                        ⚙️ Управление
+                    </button>
+                    <button class="menu-item w-full text-left p-2 hover:bg-blue-700 rounded" data-section="users">
+                        👤 Пользователи
+                    </button>
+                    <button class="menu-item w-full text-left p-2 hover:bg-blue-700 rounded" data-section="backup">
+                        💾 Резервное копирование
+                    </button>
+                </nav>
+
+                <button id="logoutBtn" class="w-full bg-red-600 hover:bg-red-700 p-2 rounded mt-8">
+                    Выход
+                </button>
+            </div>
+
+            <!-- Основной контент -->
+            <div class="flex-1 p-3 md:p-6 min-w-0 md:ml-0">
+                <!-- Главная -->
+                <div id="dashboard" class="content-section active">
+                    <h1 class="text-3xl font-bold mb-6">📊 Панель управления</h1>
+                    
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-6 mb-6">
+                        <div class="bg-white p-6 rounded-lg shadow">
+                            <h3 class="text-lg font-semibold mb-2">Общий приход</h3>
+                            <p class="text-2xl font-bold text-green-600" id="totalIncome">0</p>
+                            <p class="text-sm text-gray-600 mt-1" id="totalIncomeTons">0 тонн</p>
+                        </div>
+                        <div class="bg-white p-6 rounded-lg shadow">
+                            <h3 class="text-lg font-semibold mb-2">Общий расход</h3>
+                            <p class="text-2xl font-bold text-red-600" id="totalExpense">0</p>
+                            <p class="text-sm text-gray-600 mt-1" id="totalExpenseTons">0 тонн</p>
+                        </div>
+                        <div class="bg-white p-6 rounded-lg shadow">
+                            <h3 class="text-lg font-semibold mb-2">Остаток</h3>
+                            <p class="text-2xl font-bold text-blue-600" id="totalBalance">0</p>
+                            <p class="text-sm text-gray-600 mt-1" id="totalBalanceTons">0 тонн</p>
+                        </div>
+                        <div class="bg-white p-6 rounded-lg shadow">
+                            <h3 class="text-lg font-semibold mb-2">💰 Долги</h3>
+                            <p class="text-2xl font-bold text-orange-600" id="totalDebt">0</p>
+                        </div>
+                    </div>
+
+                    <!-- Быстрые отчеты -->
+                    <div class="bg-white p-6 rounded-lg shadow mt-6">
+                        <h3 class="text-lg font-semibold mb-4">📊 Быстрые отчеты</h3>
+                        <div class="flex flex-wrap gap-4">
+                            <button onclick="generateDailyReportOnDashboard()"
+                                class="bg-emerald-600 text-white px-6 py-3 rounded-lg hover:bg-emerald-700 transition-colors flex items-center gap-2">
+                                <span>📅</span>
+                                <span>Отчет за день</span>
+                            </button>
+                            <button onclick="generateQuickStockReportAndShow()"
+                                class="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2">
+                                <span>📋</span>
+                                <span>Фактические остатки</span>
+                            </button>
+                            <button onclick="sendStockToWhatsAppNew()"
+                                class="bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2">
+                                <span>📱</span>
+                                <span>Отправить в WhatsApp</span>
+                            </button>
+                            <button onclick="copyStockToClipboardNew()"
+                                class="bg-gray-600 text-white px-6 py-3 rounded-lg hover:bg-gray-700 transition-colors flex items-center gap-2">
+                                <span>📄</span>
+                                <span>Копировать отчет</span>
+                            </button>
+                        </div>
+                        <!-- Контейнер для отчета остатков -->
+                        <div id="quickStockReportContainer" class="mt-4 hidden">
+                            <div class="flex justify-between items-center mb-2">
+                                <h4 class="font-semibold text-gray-700">Фактические остатки</h4>
+                                <button onclick="document.getElementById('quickStockReportContainer').classList.add('hidden')"
+                                    class="text-gray-400 hover:text-gray-600 text-xl leading-none">&times;</button>
+                            </div>
+                            <pre id="quickStockReportText" class="bg-gray-50 p-4 rounded border text-sm font-mono whitespace-pre-wrap max-h-96 overflow-y-auto"></pre>
+                        </div>
+                    </div>
+
+                    <!-- Контейнер для отчета за день -->
+                    <div id="dailyReportContainerNew" class="bg-white rounded-lg shadow p-6 mt-6 hidden">
+                        <div class="flex flex-wrap justify-between items-center gap-4 mb-4">
+                            <div class="flex items-center gap-3">
+                                <h3 class="text-lg font-semibold">📅 Отчет за день</h3>
+                                <div class="flex items-center gap-2">
+                                    <label class="text-sm font-medium">Дата:</label>
+                                    <input type="date" id="dailyReportDatePickerNew" class="p-2 border rounded text-sm">
+                                    <button onclick="generateDailyReportOnDashboard(document.getElementById('dailyReportDatePickerNew').value)"
+                                        class="bg-blue-600 text-white px-3 py-2 rounded text-sm hover:bg-blue-700">
+                                        Обновить
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <button onclick="printDailyReportNew()"
+                                    class="bg-blue-600 text-white px-3 py-1 rounded text-sm hover:bg-blue-700 flex items-center gap-1">
+                                    <span>🖨️</span><span>Печать</span>
+                                </button>
+                                <button onclick="exportDailyReportNewExcel()"
+                                    class="bg-green-600 text-white px-3 py-1 rounded text-sm hover:bg-green-700 flex items-center gap-1">
+                                    <span>📊</span><span>Excel</span>
+                                </button>
+                                <button onclick="document.getElementById('dailyReportContainerNew').classList.add('hidden')"
+                                    class="text-gray-500 hover:text-gray-700 text-2xl leading-none">&times;</button>
+                            </div>
+                        </div>
+                        <div id="dailyReportContentNew"></div>
+                    </div>
+
+                    <!-- Текущие цены товаров -->
+                    <div class="bg-white p-6 rounded-lg shadow mt-6">
+                        <div class="flex justify-between items-center mb-4">
+                            <h3 class="text-lg font-semibold">💰 Текущие цены товаров</h3>
+                            <div class="flex items-center gap-2">
+                                <button onclick="updateDashboardPricesNew()"
+                                    class="bg-blue-500 text-white px-3 py-1 rounded text-sm hover:bg-blue-600 flex items-center gap-1">
+                                    <span>🔄</span>
+                                    <span>Обновить</span>
+                                </button>
+                                <button onclick="navigateToSection('management'); setTimeout(() => { const el = document.getElementById('priceManagementBlock'); if(el) el.scrollIntoView({behavior:'smooth'}); }, 150);"
+                                    class="bg-green-500 text-white px-3 py-1 rounded text-sm hover:bg-green-600 flex items-center gap-1">
+                                    <span>⚙️</span>
+                                    <span>Управление</span>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="mb-3 text-sm text-gray-600">
+                            <span>Последнее обновление: </span>
+                            <span id="pricesLastUpdateNew" class="font-medium">—</span>
+                        </div>
+                        <div id="dashboardPricesListNew" class="bg-gray-50 rounded-lg p-4 min-h-16">
+                            <div class="text-center text-gray-400 text-sm py-4">Загрузка цен...</div>
+                        </div>
+                        <div id="noPricesMessageNew" class="text-center py-8 text-gray-500 hidden">
+                            <div class="text-4xl mb-2">💰</div>
+                            <p class="text-lg font-medium">Цены не установлены</p>
+                            <p class="text-sm">Перейдите в раздел "Управление" для установки цен</p>
+                        </div>
+                    </div>
+
+                    <!-- Добро пожаловать -->
+                    <div class="bg-white p-6 rounded-lg shadow mt-6">
+                        <h3 class="text-lg font-semibold mb-4">🎉 Добро пожаловать!</h3>
+                        <p class="text-gray-600 mb-4">
+                            Система успешно подключена к PostgreSQL базе данных на Railway.
+                        </p>
+                        <div class="grid grid-cols-3 gap-4">
+                            <div class="bg-green-50 p-4 rounded border-l-4 border-green-500">
+                                <div class="text-sm text-gray-600">База данных</div>
+                                <div class="text-xl font-bold text-green-700">PostgreSQL</div>
+                            </div>
+                            <div class="bg-blue-50 p-4 rounded border-l-4 border-blue-500">
+                                <div class="text-sm text-gray-600">Хостинг</div>
+                                <div class="text-xl font-bold text-blue-700">Railway</div>
+                            </div>
+                            <div class="bg-purple-50 p-4 rounded border-l-4 border-purple-500">
+                                <div class="text-sm text-gray-600">Статус</div>
+                                <div class="text-xl font-bold text-purple-700">Онлайн</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Приход -->
+                <div id="income" class="content-section">
+                    <h1 class="text-3xl font-bold mb-6">📥 Приход товаров</h1>
+                    
+                    <!-- Форма добавления прихода -->
+                    <div class="bg-white p-6 rounded-lg shadow mb-6">
+                        <form id="incomeForm" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                            <div>
+                                <label for="incomeDate" class="block text-sm font-medium mb-2">Дата</label>
+                                <input type="date" id="incomeDate" class="w-full p-2 border rounded" required>
+                            </div>
+                            <div>
+                                <label for="incomeWagon" class="block text-sm font-medium mb-2">Номер вагона</label>
+                                <input type="text" id="incomeWagon" class="w-full p-2 border rounded" required>
+                            </div>
+                            <div>
+                                <label for="incomeCompany" class="block text-sm font-medium mb-2">Фирма</label>
+                                <input type="text" id="incomeCompany" list="incomeCompanyList" 
+                                    class="w-full p-2 border rounded" placeholder="Начните вводить название фирмы..." required>
+                                <datalist id="incomeCompanyList"></datalist>
+                            </div>
+                            <div>
+                                <label for="incomeWarehouse" class="block text-sm font-medium mb-2">Склад</label>
+                                <input type="text" id="incomeWarehouse" list="incomeWarehouseList" 
+                                    class="w-full p-2 border rounded" placeholder="Начните вводить название склада..." required>
+                                <datalist id="incomeWarehouseList"></datalist>
+                            </div>
+                            <div>
+                                <label for="incomeProduct" class="block text-sm font-medium mb-2">Товар</label>
+                                <input type="text" id="incomeProduct" list="incomeProductList" 
+                                    class="w-full p-2 border rounded" placeholder="Начните вводить название товара..." required>
+                                <datalist id="incomeProductList"></datalist>
+                            </div>
+                            <div>
+                                <label for="incomeQtyDoc" class="block text-sm font-medium mb-2">Коли-по док</label>
+                                <input type="number" id="incomeQtyDoc" class="w-full p-2 border rounded" required>
+                            </div>
+                            <div>
+                                <label for="incomeQtyFact" class="block text-sm font-medium mb-2">Коли-Факт</label>
+                                <input type="number" id="incomeQtyFact" class="w-full p-2 border rounded" required>
+                            </div>
+                            <div>
+                                <label for="incomeDifference" class="block text-sm font-medium mb-2">Разница</label>
+                                <input type="number" id="incomeDifference" class="w-full p-2 border rounded bg-gray-100" readonly>
+                            </div>
+                            <div>
+                                <label for="incomeWeightTons" class="block text-sm font-medium mb-2">Вес Тонн Факт</label>
+                                <input type="number" id="incomeWeightTons" class="w-full p-2 border rounded bg-gray-100" readonly step="0.01">
+                            </div>
+                            <div class="md:col-span-2 lg:col-span-3">
+                                <label for="incomeNotes" class="block text-sm font-medium mb-2">Примечания</label>
+                                <textarea id="incomeNotes" class="w-full p-2 border rounded" rows="2"></textarea>
+                            </div>
+                            <div class="md:col-span-2 lg:col-span-3">
+                                <button type="submit" class="bg-green-600 text-white px-6 py-2 rounded hover:bg-green-700">
+                                    Добавить приход
+                                </button>
+                                <button type="button" id="clearIncomeForm" class="bg-gray-500 text-white px-6 py-2 rounded hover:bg-gray-600 ml-2">
+                                    🗑️ Очистить форму
+                                </button>
+                                <button type="button" id="cancelIncomeEdit" class="bg-yellow-500 text-white px-6 py-2 rounded hover:bg-yellow-600 ml-2 hidden">
+                                    Отмена редактирования
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <!-- Фильтры -->
+                    <div class="bg-white p-4 rounded-lg shadow mb-4">
+                        <div class="flex items-center justify-between">
+                            <h3 class="text-lg font-semibold text-gray-700">🔍 Фильтры:</h3>
+                            <button class="filter-toggle-btn text-sm text-blue-600 border border-blue-300 px-3 py-1 rounded" onclick="this.closest('.bg-white').querySelector('.filter-body').classList.toggle('open')">▾ Фильтры</button>
+                        </div>
+                        <div class="filter-body flex-wrap items-end gap-3 mt-2">
+                            <div class="flex-1 min-w-36">
+                                <label class="block text-sm font-medium mb-1">Дата</label>
+                                <select id="filterIncomeDate" class="w-full p-2 border rounded text-sm">
+                                    <option value="">Все даты</option>
+                                    <option value="today" selected>Только сегодня</option>
+                                    <option value="yesterday">Только вчера</option>
+                                    <option value="week">Последние 7 дней</option>
+                                    <option value="month">Последние 30 дней</option>
+                                    <option value="q1">I квартал (янв-мар)</option>
+                                    <option value="q2">II квартал (апр-июн)</option>
+                                    <option value="q3">III квартал (июл-сен)</option>
+                                    <option value="q4">IV квартал (окт-дек)</option>
+                                </select>
+                            </div>
+                            <div class="flex-1 min-w-36">
+                                <label class="block text-sm font-medium mb-1">Вагон</label>
+                                <input type="text" id="filterIncomeWagon" placeholder="Номер вагона" class="w-full p-2 border rounded text-sm">
+                            </div>
+                            <!-- Мультиселект: Фирма -->
+                            <div class="flex-1 min-w-36 relative">
+                                <label class="block text-sm font-medium mb-1">Фирма</label>
+                                <div class="multiselect-wrap" id="msWrap_filterIncomeCompany">
+                                    <div class="multiselect-btn" id="msBtn_filterIncomeCompany">Все фирмы ▾</div>
+                                    <div class="multiselect-dropdown hidden" id="msDrop_filterIncomeCompany"></div>
+                                </div>
+                            </div>
+                            <!-- Мультиселект: Группа складов -->
+                            <div class="flex-1 min-w-36 relative">
+                                <label class="block text-sm font-medium mb-1">Группа складов</label>
+                                <div class="multiselect-wrap" id="msWrap_filterIncomeWarehouseGroup">
+                                    <div class="multiselect-btn" id="msBtn_filterIncomeWarehouseGroup">Все группы ▾</div>
+                                    <div class="multiselect-dropdown hidden" id="msDrop_filterIncomeWarehouseGroup"></div>
+                                </div>
+                            </div>
+                            <!-- Мультиселект: Склад -->
+                            <div class="flex-1 min-w-36 relative">
+                                <label class="block text-sm font-medium mb-1">Склад</label>
+                                <div class="multiselect-wrap" id="msWrap_filterIncomeWarehouse">
+                                    <div class="multiselect-btn" id="msBtn_filterIncomeWarehouse">Все склады ▾</div>
+                                    <div class="multiselect-dropdown hidden" id="msDrop_filterIncomeWarehouse"></div>
+                                </div>
+                            </div>
+                            <!-- Мультиселект: Товар -->
+                            <div class="flex-1 min-w-36 relative">
+                                <label class="block text-sm font-medium mb-1">Товар</label>
+                                <div class="multiselect-wrap" id="msWrap_filterIncomeProduct">
+                                    <div class="multiselect-btn" id="msBtn_filterIncomeProduct">Все товары ▾</div>
+                                    <div class="multiselect-dropdown hidden" id="msDrop_filterIncomeProduct"></div>
+                                </div>
+                            </div>
+                            <div class="flex items-end gap-2">
+                                <button id="clearIncomeFilters" class="bg-gray-500 text-white px-4 py-2 rounded text-sm hover:bg-gray-600">
+                                    🗑️ Очистить
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Таблица прихода -->
+                    <div class="bg-white rounded-lg shadow overflow-x-auto">
+                        <div class="px-4 pt-3 pb-1 text-sm text-gray-500" id="incomeRecordCount"></div>
+                        <table class="w-full">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th class="p-3 text-left">Дата</th>
+                                    <th class="p-3 text-left">Вагон</th>
+                                    <th class="p-3 text-left">Фирма</th>
+                                    <th class="p-3 text-left">Склад</th>
+                                    <th class="p-3 text-left">Товар</th>
+                                    <th class="p-3 text-left">По док</th>
+                                    <th class="p-3 text-left">Факт</th>
+                                    <th class="p-3 text-left">Разница</th>
+                                    <th class="p-3 text-left">Тонн</th>
+                                    <th class="p-3 text-left">Пользователь</th>
+                                    <th class="p-3 text-left">Действия</th>
+                                </tr>
+                                <tr class="bg-blue-50 font-bold border-b-2 border-blue-200">
+                                    <td class="p-3" colspan="5">ИТОГО:</td>
+                                    <td class="p-3 text-blue-700" id="incomeTotalDoc">0</td>
+                                    <td class="p-3 text-blue-700" id="incomeTotalFact">0</td>
+                                    <td class="p-3 text-blue-700" id="incomeTotalDiff">0</td>
+                                    <td class="p-3 text-blue-700" id="incomeTotalTons">0</td>
+                                    <td class="p-3" colspan="2"></td>
+                                </tr>
+                            </thead>
+                            <tbody id="incomeTableBody">
+                                <tr>
+                                    <td colspan="11" class="p-4 text-center text-gray-500">Загрузка данных...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Расход -->
+                <div id="expense" class="content-section">
+                    <h1 class="text-3xl font-bold mb-6">📤 Расход товаров</h1>
+                    
+                    <!-- Форма добавления расхода -->
+                    <div class="bg-white p-6 rounded-lg shadow mb-6">
+                        <form id="expenseForm" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                            <div>
+                                <label for="expenseDate" class="block text-sm font-medium mb-2">Дата</label>
+                                <input type="date" id="expenseDate" class="w-full p-2 border rounded" required>
+                            </div>
+                            <div>
+                                <label for="expenseCoalition" class="block text-sm font-medium mb-2">Коалиция</label>
+                                <input type="text" id="expenseCoalition" list="expenseCoalitionList" 
+                                    class="w-full p-2 border rounded">
+                                <datalist id="expenseCoalitionList"></datalist>
+                            </div>
+                            <div>
+                                <label for="expenseNumberInput" class="block text-sm font-medium mb-2">Номер накладной</label>
+                                <div class="flex items-center gap-2">
+                                    <input type="text" id="expenseMonth" class="w-16 p-2 border rounded bg-gray-100 text-center font-mono" 
+                                        readonly value="01" title="Месяц (автоматически)">
+                                    <span class="text-xl font-bold text-gray-400">\</span>
+                                    <input type="text" id="expenseNumberInput" class="flex-1 p-2 border rounded font-mono" 
+                                        placeholder="0001" maxlength="10" title="Номер из накладной">
+                                </div>
+                                <input type="hidden" id="expenseNumber">
+                            </div>
+                            <div>
+                                <label for="expenseCompany" class="block text-sm font-medium mb-2">Фирма</label>
+                                <input type="text" id="expenseCompany" list="expenseCompanyList" 
+                                    class="w-full p-2 border rounded" required>
+                                <datalist id="expenseCompanyList"></datalist>
+                            </div>
+                            <div>
+                                <label for="expenseWarehouse" class="block text-sm font-medium mb-2">Склад</label>
+                                <input type="text" id="expenseWarehouse" list="expenseWarehouseList" 
+                                    class="w-full p-2 border rounded" required>
+                                <datalist id="expenseWarehouseList"></datalist>
+                            </div>
+                            <div>
+                                <label for="expenseProduct" class="block text-sm font-medium mb-2">Товар</label>
+                                <input type="text" id="expenseProduct" list="expenseProductList" 
+                                    class="w-full p-2 border rounded" required>
+                                <datalist id="expenseProductList"></datalist>
+                            </div>
+                            <div>
+                                <label for="expenseClient" class="block text-sm font-medium mb-2">Клиент</label>
+                                <input type="text" id="expenseClient" list="expenseClientList" 
+                                    class="w-full p-2 border rounded" required>
+                                <datalist id="expenseClientList"></datalist>
+                            </div>
+                            <div>
+                                <label for="expenseQuantity" class="block text-sm font-medium mb-2">Количество</label>
+                                <input type="number" id="expenseQuantity" class="w-full p-2 border rounded" required>
+                            </div>
+                            <div>
+                                <label for="expenseTons" class="block text-sm font-medium mb-2">Тонн</label>
+                                <input type="number" id="expenseTons" class="w-full p-2 border rounded bg-gray-100" readonly step="0.01">
+                            </div>
+                            <div>
+                                <label for="expensePrice" class="block text-sm font-medium mb-2">Цена за тонну</label>
+                                <input type="number" id="expensePrice" class="w-full p-2 border rounded" required step="0.01">
+                            </div>
+                            <div>
+                                <label for="expenseTotal" class="block text-sm font-medium mb-2">Общая сумма</label>
+                                <input type="number" id="expenseTotal" class="w-full p-2 border rounded bg-gray-100" readonly step="0.01">
+                            </div>
+                            <div class="md:col-span-2">
+                                <label for="expenseNotes" class="block text-sm font-medium mb-2">Примечания</label>
+                                <textarea id="expenseNotes" class="w-full p-2 border rounded" rows="2"></textarea>
+                            </div>
+                            <div class="md:col-span-2 lg:col-span-3">
+                                <button type="submit" class="bg-red-600 text-white px-6 py-2 rounded hover:bg-red-700">
+                                    Добавить расход
+                                </button>
+                                <button type="button" id="createInvoiceBtn" class="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700 ml-2">
+                                    📄 Создать накладную
+                                </button>
+                                <button type="button" id="clearExpenseForm" class="bg-gray-500 text-white px-6 py-2 rounded hover:bg-gray-600 ml-2">
+                                    🗑️ Очистить форму
+                                </button>
+                                <button type="button" id="cancelExpenseEdit" class="bg-yellow-500 text-white px-6 py-2 rounded hover:bg-yellow-600 ml-2 hidden">
+                                    Отмена редактирования
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <!-- Фильтры -->
+                    <div class="bg-white p-4 rounded-lg shadow mb-4">
+                        <div class="flex items-center justify-between">
+                            <h3 class="text-lg font-semibold text-gray-700">🔍 Фильтры:</h3>
+                            <button class="filter-toggle-btn text-sm text-blue-600 border border-blue-300 px-3 py-1 rounded" onclick="this.closest('.bg-white').querySelector('.filter-body').classList.toggle('open')">▾ Фильтры</button>
+                        </div>
+                        <div class="filter-body flex-wrap items-center gap-3 mt-2">
+                            <div class="flex-1 min-w-36">
+                                <label class="block text-sm font-medium mb-1">Дата</label>
+                                <select id="filterExpenseDate" class="w-full p-2 border rounded text-sm">
+                                    <option value="">Все даты</option>
+                                    <option value="today" selected>Только сегодня</option>
+                                    <option value="yesterday">Только вчера</option>
+                                    <option value="week">Последние 7 дней</option>
+                                    <option value="month">Последние 30 дней</option>
+                                    <option value="q1">I квартал (янв-мар)</option>
+                                    <option value="q2">II квартал (апр-июн)</option>
+                                    <option value="q3">III квартал (июл-сен)</option>
+                                    <option value="q4">IV квартал (окт-дек)</option>
+                                </select>
+                            </div>
+                            <!-- Мультиселект: Фирма -->
+                            <div class="flex-1 min-w-36 relative">
+                                <label class="block text-sm font-medium mb-1">Фирма</label>
+                                <div class="multiselect-wrap" id="msWrap_filterExpenseCompany">
+                                    <div class="multiselect-btn" id="msBtn_filterExpenseCompany">Все фирмы ▾</div>
+                                    <div class="multiselect-dropdown hidden" id="msDrop_filterExpenseCompany"></div>
+                                </div>
+                            </div>
+                            <!-- Мультиселект: Группа складов -->
+                            <div class="flex-1 min-w-36 relative">
+                                <label class="block text-sm font-medium mb-1">Группа складов</label>
+                                <div class="multiselect-wrap" id="msWrap_filterExpenseWarehouseGroup">
+                                    <div class="multiselect-btn" id="msBtn_filterExpenseWarehouseGroup">Все группы ▾</div>
+                                    <div class="multiselect-dropdown hidden" id="msDrop_filterExpenseWarehouseGroup"></div>
+                                </div>
+                            </div>
+                            <!-- Мультиселект: Склад -->
+                            <div class="flex-1 min-w-36 relative">
+                                <label class="block text-sm font-medium mb-1">Склад</label>
+                                <div class="multiselect-wrap" id="msWrap_filterExpenseWarehouse">
+                                    <div class="multiselect-btn" id="msBtn_filterExpenseWarehouse">Все склады ▾</div>
+                                    <div class="multiselect-dropdown hidden" id="msDrop_filterExpenseWarehouse"></div>
+                                </div>
+                            </div>
+                            <!-- Мультиселект: Клиент -->
+                            <div class="flex-1 min-w-36 relative">
+                                <label class="block text-sm font-medium mb-1">Клиент</label>
+                                <div class="multiselect-wrap" id="msWrap_filterExpenseClient">
+                                    <div class="multiselect-btn" id="msBtn_filterExpenseClient">Все клиенты ▾</div>
+                                    <div class="multiselect-dropdown hidden" id="msDrop_filterExpenseClient"></div>
+                                </div>
+                            </div>
+                            <!-- Мультиселект: Товар -->
+                            <div class="flex-1 min-w-36 relative">
+                                <label class="block text-sm font-medium mb-1">Товар</label>
+                                <div class="multiselect-wrap" id="msWrap_filterExpenseProduct">
+                                    <div class="multiselect-btn" id="msBtn_filterExpenseProduct">Все товары ▾</div>
+                                    <div class="multiselect-dropdown hidden" id="msDrop_filterExpenseProduct"></div>
+                                </div>
+                            </div>
+                            <!-- Мультиселект: Коалиция -->
+                            <div class="flex-1 min-w-36 relative">
+                                <label class="block text-sm font-medium mb-1">Коалиция</label>
+                                <div class="multiselect-wrap" id="msWrap_filterExpenseCoalition">
+                                    <div class="multiselect-btn" id="msBtn_filterExpenseCoalition">Все коалиции ▾</div>
+                                    <div class="multiselect-dropdown hidden" id="msDrop_filterExpenseCoalition"></div>
+                                </div>
+                            </div>
+                            <!-- Мультиселект: Цена -->
+                            <div class="flex-1 min-w-36 relative">
+                                <label class="block text-sm font-medium mb-1">Цена</label>
+                                <div class="multiselect-wrap" id="msWrap_filterExpensePrice">
+                                    <div class="multiselect-btn" id="msBtn_filterExpensePrice">Все цены ▾</div>
+                                    <div class="multiselect-dropdown hidden" id="msDrop_filterExpensePrice"></div>
+                                </div>
+                            </div>
+                            <div class="flex items-end gap-2">
+                                <button id="clearExpenseFilters" class="bg-gray-500 text-white px-4 py-2 rounded text-sm hover:bg-gray-600">
+                                    🗑️ Очистить
+                                </button>
+                            </div>
+                        </div><!-- /filter-body -->
+                    </div>
+
+                    <!-- Таблица расхода -->
+                    <div class="bg-white rounded-lg shadow overflow-x-auto">
+                        <div class="px-4 pt-3 pb-1 text-sm text-gray-500" id="expenseRecordCount"></div>
+                        <table class="w-full">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th class="p-3 text-left">
+                                        <input type="checkbox" id="selectAllExpense" class="rounded" title="Выбрать все">
+                                    </th>
+                                    <th class="p-3 text-left">Дата</th>
+                                    <th class="p-3 text-left">Коалиция</th>
+                                    <th class="p-3 text-left">Номер</th>
+                                    <th class="p-3 text-left">Фирма</th>
+                                    <th class="p-3 text-left">Склад</th>
+                                    <th class="p-3 text-left">Товар</th>
+                                    <th class="p-3 text-left">Клиент</th>
+                                    <th class="p-3 text-left">Кол-во</th>
+                                    <th class="p-3 text-left">Тонн</th>
+                                    <th class="p-3 text-left">Цена</th>
+                                    <th class="p-3 text-left">Сумма</th>
+                                    <th class="p-3 text-left">Статус</th>
+                                    <th class="p-3 text-left">Пользователь</th>
+                                    <th class="p-3 text-left">Действия</th>
+                                </tr>
+                                <tr class="bg-blue-50 font-bold border-b-2 border-blue-200">
+                                    <td class="p-3"></td>
+                                    <td class="p-3" colspan="7">ИТОГО:</td>
+                                    <td class="p-3 text-blue-700" id="expenseTotalQuantity">0</td>
+                                    <td class="p-3 text-blue-700" id="expenseTotalTons">0</td>
+                                    <td class="p-3"></td>
+                                    <td class="p-3 text-blue-700" id="expenseTotalPrice">0</td>
+                                    <td class="p-3" colspan="3"></td>
+                                </tr>
+                            </thead>
+                            <tbody id="expenseTableBody">
+                                <tr>
+                                    <td colspan="15" class="p-4 text-center text-gray-500">Загрузка данных...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Погашения -->
+                <div id="payments" class="content-section">
+                    <h1 class="text-3xl font-bold mb-6">💰 Погашения</h1>
+                    
+                    <!-- Форма добавления погашения -->
+                    <div class="bg-white p-6 rounded-lg shadow mb-6">
+                        <form id="paymentForm" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                            <div>
+                                <label for="paymentDate" class="block text-sm font-medium mb-2">Дата</label>
+                                <input type="date" id="paymentDate" class="w-full p-2 border rounded" required>
+                            </div>
+                            <div>
+                                <label for="paymentClient" class="block text-sm font-medium mb-2">Клиент</label>
+                                <input type="text" id="paymentClient" list="paymentClientList" 
+                                    class="w-full p-2 border rounded" placeholder="Начните вводить имя клиента..." required>
+                                <datalist id="paymentClientList"></datalist>
+                            </div>
+                            <div>
+                                <label for="paymentSomoni" class="block text-sm font-medium mb-2">Сомони</label>
+                                <input type="number" id="paymentSomoni" class="w-full p-2 border rounded" required step="0.01">
+                            </div>
+                            <div>
+                                <label for="paymentRate" class="block text-sm font-medium mb-2">Курс</label>
+                                <input type="number" id="paymentRate" class="w-full p-2 border rounded" required step="0.0001">
+                            </div>
+                            <div>
+                                <label for="paymentAmount" class="block text-sm font-medium mb-2">Доллар (автоматически)</label>
+                                <input type="number" id="paymentAmount" class="w-full p-2 border rounded bg-gray-100" readonly step="0.01">
+                            </div>
+                            <div class="md:col-span-2 lg:col-span-3">
+                                <label for="paymentNotes" class="block text-sm font-medium mb-2">Примечания</label>
+                                <textarea id="paymentNotes" class="w-full p-2 border rounded" rows="2"></textarea>
+                            </div>
+                            <div class="md:col-span-2 lg:col-span-3">
+                                <button type="submit" class="bg-green-600 text-white px-6 py-2 rounded hover:bg-green-700">
+                                    Добавить погашение
+                                </button>
+                                <button type="button" id="createCashOrderBtn" class="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700 ml-2">
+                                    💵 Создать кассовый ордер
+                                </button>
+                                <button type="button" id="clearPaymentForm" class="bg-gray-500 text-white px-6 py-2 rounded hover:bg-gray-600 ml-2">
+                                    🗑️ Очистить форму
+                                </button>
+                                <button type="button" id="cancelPaymentEdit" class="bg-yellow-500 text-white px-6 py-2 rounded hover:bg-yellow-600 ml-2 hidden">
+                                    Отмена редактирования
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <!-- Фильтры -->
+                    <div class="bg-white p-4 rounded-lg shadow mb-4">
+                        <div class="flex items-center justify-between">
+                            <h3 class="text-lg font-semibold text-gray-700">🔍 Фильтры:</h3>
+                            <button class="filter-toggle-btn text-sm text-blue-600 border border-blue-300 px-3 py-1 rounded" onclick="this.closest('.bg-white').querySelector('.filter-body').classList.toggle('open')">▾ Фильтры</button>
+                        </div>
+                        <div class="filter-body flex-wrap items-center gap-4 mt-2">
+                            <div class="flex-1 min-w-48">
+                                <label for="filterPaymentDate" class="block text-sm font-medium mb-1">Дата</label>
+                                <select id="filterPaymentDate" class="w-full p-2 border rounded text-sm">
+                                    <option value="">Все даты</option>
+                                    <option value="today" selected>Только сегодня</option>
+                                    <option value="yesterday">Только вчера</option>
+                                    <option value="week">Последние 7 дней</option>
+                                    <option value="month">Последние 30 дней</option>
+                                    <option value="q1">I квартал (янв-мар)</option>
+                                    <option value="q2">II квартал (апр-июн)</option>
+                                    <option value="q3">III квартал (июл-сен)</option>
+                                    <option value="q4">IV квартал (окт-дек)</option>
+                                </select>
+                            </div>
+                            <div class="flex-1 min-w-48">
+                                <label for="filterPaymentClient" class="block text-sm font-medium mb-1">Клиент</label>
+                                <select id="filterPaymentClient" class="w-full p-2 border rounded text-sm">
+                                    <option value="">Все клиенты</option>
+                                </select>
+                            </div>
+                            <div class="flex items-end gap-2">
+                                <button id="clearPaymentFilters" class="bg-gray-500 text-white px-4 py-2 rounded text-sm hover:bg-gray-600">
+                                    🗑️ Очистить
+                                </button>
+                            </div>
+                        </div><!-- /filter-body -->
+                    </div>
+
+                    <!-- Таблица погашений -->
+                    <div class="bg-white rounded-lg shadow overflow-x-auto">
+                        <div class="px-4 pt-3 pb-1 text-sm text-gray-500" id="paymentsRecordCount"></div>
+                        <table class="w-full">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th class="p-3 text-left">
+                                        <input type="checkbox" id="selectAllPayments" class="rounded" title="Выбрать все">
+                                    </th>
+                                    <th class="p-3 text-left">Дата</th>
+                                    <th class="p-3 text-left">Клиент</th>
+                                    <th class="p-3 text-left">Сомони</th>
+                                    <th class="p-3 text-left">Курс</th>
+                                    <th class="p-3 text-left">Доллар</th>
+                                    <th class="p-3 text-left">Примечания</th>
+                                    <th class="p-3 text-left">Пользователь</th>
+                                    <th class="p-3 text-left">Действия</th>
+                                </tr>
+                                <tr class="bg-blue-50 font-bold border-b-2 border-blue-200">
+                                    <td class="p-3"></td>
+                                    <td class="p-3" colspan="2">ИТОГО:</td>
+                                    <td class="p-3 text-blue-700" id="paymentsTotalSomoni">0</td>
+                                    <td class="p-3"></td>
+                                    <td class="p-3 text-blue-700" id="paymentsTotalAmount">0</td>
+                                    <td class="p-3" colspan="3"></td>
+                                </tr>
+                            </thead>
+                            <tbody id="paymentsTableBody">
+                                <tr>
+                                    <td colspan="9" class="p-4 text-center text-gray-500">Загрузка данных...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Партнеры -->
+                <div id="partners" class="content-section">
+                    <h1 class="text-3xl font-bold mb-6">🤝 Партнеры</h1>
+                    
+                    <!-- Форма добавления партнера -->
+                    <div class="bg-white p-6 rounded-lg shadow mb-6">
+                        <h2 class="text-xl font-bold mb-4">Добавить партнера</h2>
+                        <form id="partnerForm">
+                            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+                                <div>
+                                    <label for="partnerDate" class="block text-sm font-medium mb-1">Дата</label>
+                                    <input type="date" id="partnerDate" class="w-full p-2 border rounded" required>
+                                </div>
+                                <div>
+                                    <label for="partnerClient" class="block text-sm font-medium mb-1">Клиент</label>
+                                    <input type="text" id="partnerClient" list="partnerClientList" 
+                                        class="w-full p-2 border rounded" placeholder="Начните вводить имя клиента..." required>
+                                    <datalist id="partnerClientList"></datalist>
+                                </div>
+                                <div>
+                                    <label for="partnerSomoni" class="block text-sm font-medium mb-1">Сомони</label>
+                                    <input type="number" id="partnerSomoni" step="0.01" min="0" 
+                                        class="w-full p-2 border rounded" placeholder="0.00" required>
+                                </div>
+                                <div>
+                                    <label for="partnerRate" class="block text-sm font-medium mb-1">Курс</label>
+                                    <input type="number" id="partnerRate" step="0.0001" min="0" 
+                                        class="w-full p-2 border rounded" placeholder="0.0000" required>
+                                </div>
+                                <div>
+                                    <label for="partnerAmount" class="block text-sm font-medium mb-1">Доллар (авто)</label>
+                                    <input type="number" id="partnerAmount" step="0.01" 
+                                        class="w-full p-2 border rounded bg-gray-100" placeholder="0.00" readonly>
+                                </div>
+                                <div class="md:col-span-2">
+                                    <label for="partnerNotes" class="block text-sm font-medium mb-1">Примечания</label>
+                                    <input type="text" id="partnerNotes" class="w-full p-2 border rounded" placeholder="Примечания...">
+                                </div>
+                            </div>
+                            <div class="flex gap-2">
+                                <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
+                                    Добавить
+                                </button>
+                                <button type="button" id="createPartnerCashOrderBtn" class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">
+                                    💵 Создать кассовый ордер
+                                </button>
+                                <button type="button" id="clearPartnerForm" class="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600" title="Очистить форму">
+                                    🗑️ Очистить
+                                </button>
+                                <button type="button" id="cancelPartnerEdit" class="hidden bg-yellow-500 text-white px-4 py-2 rounded hover:bg-yellow-600">
+                                    Отмена
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <!-- Таблица партнеров -->
+                    <div class="bg-white rounded-lg shadow overflow-x-auto">
+                        <div class="flex justify-between items-center p-4 border-b">
+                            <h3 class="font-semibold text-gray-700">Список партнеров</h3>
+                            <div class="flex gap-2">
+                                <button onclick="printPartnersTable()"
+                                    class="bg-gray-600 text-white px-3 py-1 rounded hover:bg-gray-700 flex items-center gap-1 text-sm">
+                                    🖨️ Печать
+                                </button>
+                                <button onclick="exportPartnersExcel()"
+                                    class="bg-green-600 text-white px-3 py-1 rounded hover:bg-green-700 flex items-center gap-1 text-sm">
+                                    📊 Excel
+                                </button>
+                            </div>
+                        </div>
+                        <table class="w-full">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th class="p-3 text-left">
+                                        <input type="checkbox" id="selectAllPartners" class="rounded" title="Выбрать все">
+                                    </th>
+                                    <th class="p-3 text-left">Дата</th>
+                                    <th class="p-3 text-left">Клиент</th>
+                                    <th class="p-3 text-left">Сомони</th>
+                                    <th class="p-3 text-left">Курс</th>
+                                    <th class="p-3 text-left">Доллар</th>
+                                    <th class="p-3 text-left">Примечания</th>
+                                    <th class="p-3 text-left">Пользователь</th>
+                                    <th class="p-3 text-left">Действия</th>
+                                </tr>
+                                <tr class="bg-blue-50 font-bold border-b-2 border-blue-200">
+                                    <td class="p-3"></td>
+                                    <td class="p-3" colspan="2">ИТОГО:</td>
+                                    <td class="p-3 text-blue-700" id="partnersTotalSomoni">0</td>
+                                    <td class="p-3"></td>
+                                    <td class="p-3 text-blue-700" id="partnersTotalAmount">0</td>
+                                    <td class="p-3" colspan="3"></td>
+                                </tr>
+                            </thead>
+                            <tbody id="partnersTableBody">
+                                <tr>
+                                    <td colspan="9" class="p-4 text-center text-gray-500">Загрузка данных...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Свод Вагонов -->
+                <div id="wagon-summary" class="content-section">
+                    <div class="flex justify-between items-center mb-6">
+                        <h1 class="text-3xl font-bold">🚂 Свод Вагонов</h1>
+                        <div class="flex gap-2">
+                            <button id="printWagonSummary" class="bg-gray-600 text-white px-4 py-2 rounded hover:bg-gray-700 flex items-center gap-2">
+                                🖨️ Печать
+                            </button>
+                            <button id="excelWagonSummary" class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 flex items-center gap-2">
+                                📊 Excel
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="bg-white p-6 rounded-lg shadow mb-6">
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <!-- Группы складов -->
+                            <div class="relative">
+                                <label class="block text-sm font-medium mb-2">Группа складов</label>
+                                <button type="button" id="wagonGroupsDropdownBtn" class="w-full p-2 border rounded text-left bg-white hover:bg-gray-50 flex justify-between items-center">
+                                    <span id="wagonGroupsSelected">Все группы</span>
+                                    <span>▼</span>
+                                </button>
+                                <div id="wagonGroupsDropdown" class="hidden absolute z-10 w-full mt-1 bg-white border rounded shadow-lg max-h-60 overflow-y-auto">
+                                    <div class="p-2 border-b bg-gray-50 flex gap-2">
+                                        <button type="button" onclick="selectAllWagonGroups()" class="text-xs text-blue-600 hover:underline">Все</button>
+                                        <button type="button" onclick="clearAllWagonGroups()" class="text-xs text-blue-600 hover:underline">Очистить</button>
+                                    </div>
+                                    <div id="wagonGroupsList" class="p-2">
+                                        <p class="text-sm text-gray-500">Загрузка...</p>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Склады -->
+                            <div class="relative">
+                                <label class="block text-sm font-medium mb-2">Склад</label>
+                                <button type="button" id="wagonWarehousesDropdownBtn" class="w-full p-2 border rounded text-left bg-white hover:bg-gray-50 flex justify-between items-center">
+                                    <span id="wagonWarehousesSelected">Все склады</span>
+                                    <span>▼</span>
+                                </button>
+                                <div id="wagonWarehousesDropdown" class="hidden absolute z-10 w-full mt-1 bg-white border rounded shadow-lg max-h-60 overflow-y-auto">
+                                    <div class="p-2 border-b bg-gray-50 flex gap-2">
+                                        <button type="button" onclick="selectAllWagonWarehouses()" class="text-xs text-blue-600 hover:underline">Все</button>
+                                        <button type="button" onclick="clearAllWagonWarehouses()" class="text-xs text-blue-600 hover:underline">Очистить</button>
+                                    </div>
+                                    <div id="wagonWarehousesList" class="p-2">
+                                        <p class="text-sm text-gray-500">Загрузка...</p>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Товары -->
+                            <div class="relative">
+                                <label class="block text-sm font-medium mb-2">Товары</label>
+                                <button type="button" id="wagonProductsDropdownBtn" class="w-full p-2 border rounded text-left bg-white hover:bg-gray-50 flex justify-between items-center">
+                                    <span id="wagonProductsSelected">Все товары</span>
+                                    <span>▼</span>
+                                </button>
+                                <div id="wagonProductsDropdown" class="hidden absolute z-10 w-full mt-1 bg-white border rounded shadow-lg max-h-60 overflow-y-auto">
+                                    <div class="p-2 border-b bg-gray-50 flex gap-2">
+                                        <button type="button" onclick="selectAllWagonProducts()" class="text-xs text-blue-600 hover:underline">Все</button>
+                                        <button type="button" onclick="clearAllWagonProducts()" class="text-xs text-blue-600 hover:underline">Очистить</button>
+                                    </div>
+                                    <div id="wagonProductsList" class="p-2">
+                                        <p class="text-sm text-gray-500">Загрузка...</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="mt-4 flex gap-2">
+                            <button id="updateWagonSummaryBtn" class="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700">
+                                Обновить
+                            </button>
+                            <button id="clearWagonFiltersBtn" class="bg-gray-500 text-white px-6 py-2 rounded hover:bg-gray-600">
+                                Сбросить фильтры
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="bg-white rounded-lg shadow overflow-x-auto">
+                        <table class="w-full">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th class="p-3 text-left">Вагон</th>
+                                    <th class="p-3 text-left">Фирма</th>
+                                    <th class="p-3 text-left">Склад</th>
+                                    <th class="p-3 text-left">Товар</th>
+                                    <th class="p-3 text-right">По док</th>
+                                    <th class="p-3 text-right">Факт</th>
+                                    <th class="p-3 text-right">Тонн</th>
+                                </tr>
+                            </thead>
+                            <tbody id="wagonSummaryTableBody">
+                                <tr><td colspan="7" class="p-4 text-center text-gray-500">Загрузка...</td></tr>
+                            </tbody>
+                            <tfoot class="bg-blue-50 font-bold border-t-2 border-blue-200">
+                                <tr>
+                                    <td class="p-3" colspan="4">ИТОГО:</td>
+                                    <td class="p-3 text-right text-blue-700" id="wagonTotalQtyDoc">0</td>
+                                    <td class="p-3 text-right text-blue-700" id="wagonTotalQtyFact">0</td>
+                                    <td class="p-3 text-right text-blue-700" id="wagonTotalWeight">0</td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Свод Остатков -->
+                <div id="balance-summary" class="content-section">
+                    <div class="flex justify-between items-center mb-6">
+                        <h1 class="text-3xl font-bold">📦 Свод Остатков</h1>
+                        <div class="flex gap-2">
+                            <button id="printBalanceSummary" class="bg-gray-600 text-white px-4 py-2 rounded hover:bg-gray-700 flex items-center gap-2">
+                                🖨️ Печать
+                            </button>
+                            <button id="excelBalanceSummary" class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 flex items-center gap-2">
+                                📊 Excel
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="bg-white p-6 rounded-lg shadow mb-6">
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <!-- Группы складов -->
+                            <div class="relative">
+                                <label class="block text-sm font-medium mb-2">Группа складов</label>
+                                <button type="button" id="balanceGroupsDropdownBtn" class="w-full p-2 border rounded text-left bg-white hover:bg-gray-50 flex justify-between items-center">
+                                    <span id="balanceGroupsSelected">Все группы</span>
+                                    <span>▼</span>
+                                </button>
+                                <div id="balanceGroupsDropdown" class="hidden absolute z-10 w-full mt-1 bg-white border rounded shadow-lg max-h-60 overflow-y-auto">
+                                    <div class="p-2 border-b bg-gray-50 flex gap-2">
+                                        <button type="button" onclick="selectAllBalanceGroups()" class="text-xs text-blue-600 hover:underline">Все</button>
+                                        <button type="button" onclick="clearAllBalanceGroups()" class="text-xs text-blue-600 hover:underline">Очистить</button>
+                                    </div>
+                                    <div id="balanceGroupsList" class="p-2">
+                                        <p class="text-sm text-gray-500">Загрузка...</p>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Склады -->
+                            <div class="relative">
+                                <label class="block text-sm font-medium mb-2">Склад</label>
+                                <button type="button" id="balanceWarehousesDropdownBtn" class="w-full p-2 border rounded text-left bg-white hover:bg-gray-50 flex justify-between items-center">
+                                    <span id="balanceWarehousesSelected">Все склады</span>
+                                    <span>▼</span>
+                                </button>
+                                <div id="balanceWarehousesDropdown" class="hidden absolute z-10 w-full mt-1 bg-white border rounded shadow-lg max-h-60 overflow-y-auto">
+                                    <div class="p-2 border-b bg-gray-50 flex gap-2">
+                                        <button type="button" onclick="selectAllBalanceWarehouses()" class="text-xs text-blue-600 hover:underline">Все</button>
+                                        <button type="button" onclick="clearAllBalanceWarehouses()" class="text-xs text-blue-600 hover:underline">Очистить</button>
+                                    </div>
+                                    <div id="balanceWarehousesList" class="p-2">
+                                        <p class="text-sm text-gray-500">Загрузка...</p>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Товары -->
+                            <div class="relative">
+                                <label class="block text-sm font-medium mb-2">Товары</label>
+                                <button type="button" id="balanceProductsDropdownBtn" class="w-full p-2 border rounded text-left bg-white hover:bg-gray-50 flex justify-between items-center">
+                                    <span id="balanceProductsSelected">Все товары</span>
+                                    <span>▼</span>
+                                </button>
+                                <div id="balanceProductsDropdown" class="hidden absolute z-10 w-full mt-1 bg-white border rounded shadow-lg max-h-60 overflow-y-auto">
+                                    <div class="p-2 border-b bg-gray-50 flex gap-2">
+                                        <button type="button" onclick="selectAllBalanceProducts()" class="text-xs text-blue-600 hover:underline">Все</button>
+                                        <button type="button" onclick="clearAllBalanceProducts()" class="text-xs text-blue-600 hover:underline">Очистить</button>
+                                    </div>
+                                    <div id="balanceProductsList" class="p-2">
+                                        <p class="text-sm text-gray-500">Загрузка...</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="mt-4 flex gap-2">
+                            <button id="updateBalanceSummaryBtn" class="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700">
+                                Обновить
+                            </button>
+                            <button id="clearBalanceFiltersBtn" class="bg-gray-500 text-white px-6 py-2 rounded hover:bg-gray-600">
+                                Сбросить фильтры
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="bg-white rounded-lg shadow overflow-x-auto">
+                        <table class="w-full">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th class="p-3 text-left">Склад</th>
+                                    <th class="p-3 text-left">Фирма</th>
+                                    <th class="p-3 text-left">Товар</th>
+                                    <th class="p-3 text-right">Приход</th>
+                                    <th class="p-3 text-right">Расход</th>
+                                    <th class="p-3 text-right">Остаток</th>
+                                    <th class="p-3 text-right">Остаток тонн</th>
+                                </tr>
+                            </thead>
+                            <tbody id="balanceSummaryTableBody">
+                                <tr><td colspan="7" class="p-4 text-center text-gray-500">Загрузка...</td></tr>
+                            </tbody>
+                            <tfoot class="bg-blue-50 font-bold border-t-2 border-blue-200">
+                                <tr>
+                                    <td class="p-3" colspan="3">ИТОГО:</td>
+                                    <td class="p-3 text-right text-blue-700" id="balanceTotalIncome">0</td>
+                                    <td class="p-3 text-right text-blue-700" id="balanceTotalExpense">0</td>
+                                    <td class="p-3 text-right text-blue-700" id="balanceTotalBalance">0</td>
+                                    <td class="p-3 text-right text-blue-700" id="balanceTotalBalanceTons">0</td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Отчёт по долгам -->
+                <div id="debt-report" class="content-section">
+                    <div class="flex justify-between items-center mb-6">
+                        <h1 class="text-3xl font-bold">💳 Отчёт по долгам</h1>
+                        <div class="flex gap-2">
+                            <button id="printDebtReportBtn" class="bg-gray-600 text-white px-4 py-2 rounded hover:bg-gray-700 flex items-center gap-2">
+                                🖨️ Печать
+                            </button>
+                            <button id="exportDebtReportExcelBtn" class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 flex items-center gap-2">
+                                📊 Excel
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="bg-white p-4 rounded-lg shadow mb-6">
+                        <label class="flex items-center gap-2">
+                            <input type="checkbox" id="hidePositiveBalancesCheckbox" class="rounded">
+                            <span class="font-medium">Скрыть + остатки</span>
+                        </label>
+                    </div>
+
+                    <div class="bg-white rounded-lg shadow overflow-x-auto mb-6">
+                        <table class="w-full">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th class="p-3 text-left">Клиент</th>
+                                    <th class="p-3 text-right">Расход ($)</th>
+                                    <th class="p-3 text-right">Погашено ($)</th>
+                                    <th class="p-3 text-right">Долг ($)</th>
+                                </tr>
+                            </thead>
+                            <tbody id="debtReportTableBody">
+                                <tr><td colspan="4" class="p-4 text-center text-gray-500">Загрузка...</td></tr>
+                            </tbody>
+                            <tfoot class="bg-blue-50 font-bold border-t-2 border-blue-200">
+                                <tr>
+                                    <td class="p-3">ИТОГО:</td>
+                                    <td class="p-3 text-right text-blue-700" id="debtReportTotalExpense">0.00</td>
+                                    <td class="p-3 text-right text-blue-700" id="debtReportTotalPayment">0.00</td>
+                                    <td class="p-3 text-right text-blue-700" id="debtReportTotalDebt">0.00</td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+
+                    <!-- Итоги для информации -->
+                    <div id="debtReportSummary" class="bg-gradient-to-r from-blue-50 to-indigo-50 border-2 border-blue-200 rounded-lg p-6 shadow-lg">
+                        <h2 class="text-2xl font-bold mb-4 text-blue-900 flex items-center gap-2">
+                            💰 Итоги для информации:
+                        </h2>
+                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                            <div class="bg-white rounded-lg p-4 shadow">
+                                <div class="text-sm text-gray-600 mb-1">Общая задолженность:</div>
+                                <div class="text-2xl font-bold text-blue-700" id="summaryTotalExpense">0.00</div>
+                            </div>
+                            <div class="bg-white rounded-lg p-4 shadow">
+                                <div class="text-sm text-gray-600 mb-1">Всего погашено:</div>
+                                <div class="text-2xl font-bold text-green-700" id="summaryTotalPayment">0.00</div>
+                            </div>
+                            <div class="bg-white rounded-lg p-4 shadow">
+                                <div class="text-sm text-gray-600 mb-1">Переплаты:</div>
+                                <div class="text-2xl font-bold text-blue-600" id="summaryOverpayments">0.00</div>
+                            </div>
+                            <div class="bg-white rounded-lg p-4 shadow">
+                                <div class="text-sm text-gray-600 mb-1">Долги:</div>
+                                <div class="text-2xl font-bold text-red-600" id="summaryDebts">0.00</div>
+                            </div>
+                            <div class="bg-white rounded-lg p-4 shadow md:col-span-2">
+                                <div class="text-sm text-gray-600 mb-1">Итоговый баланс:</div>
+                                <div class="text-3xl font-bold" id="summaryFinalBalance">0.00</div>
+                                <div class="text-xs text-gray-500 mt-1">Положительное значение = переплата, отрицательное = долг</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Остатки складов -->
+                <div id="stock-balance" class="content-section">
+                    <h1 class="text-3xl font-bold mb-6">📦 Остатки складов</h1>
+
+                    <!-- Фильтры -->
+                    <div class="bg-white p-6 rounded-lg shadow mb-6">
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div>
+                                <label for="stockBalanceWarehouse" class="block text-sm font-medium mb-2">Склад</label>
+                                <select id="stockBalanceWarehouse" class="w-full p-2 border rounded">
+                                    <option value="">Все склады</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label for="stockBalanceProduct" class="block text-sm font-medium mb-2">Товар</label>
+                                <select id="stockBalanceProduct" class="w-full p-2 border rounded">
+                                    <option value="">Все товары</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label for="stockBalanceDate" class="block text-sm font-medium mb-2">Дата остатков</label>
+                                <input type="date" id="stockBalanceDate" class="w-full p-2 border rounded" 
+                                       title="Выберите дату для расчета остатков на эту дату">
+                            </div>
+                        </div>
+
+                        <div class="mt-4">
+                            <label class="flex items-center">
+                                <input type="checkbox" id="showZeroBalance" class="mr-2 rounded" checked>
+                                <span class="text-sm font-medium">Показать нулевые остатки</span>
+                            </label>
+                        </div>
+
+                        <div class="mt-4 flex gap-2">
+                            <button id="generateStockBalanceBtn" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
+                                📊 Сформировать отчет
+                            </button>
+                            <button id="printStockBalanceBtn" class="bg-gray-600 text-white px-4 py-2 rounded hover:bg-gray-700">
+                                🖨️ Печать
+                            </button>
+                            <button id="exportStockBalanceExcelBtn" class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">
+                                📊 Excel
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Отчет -->
+                    <div id="stockBalanceReport" class="bg-white rounded-lg shadow overflow-x-auto hidden">
+                        <table class="w-full">
+                            <tbody id="stockBalanceTableBody">
+                                <tr><td class="p-4 text-center text-gray-500">Нажмите "Сформировать отчет"</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Отчет по погашениям -->
+                <div id="payments-report" class="content-section">
+                    <div class="mb-4">
+                        <button id="backToReportsListBtn" class="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600">
+                            ← Назад к списку отчетов
+                        </button>
+                    </div>
+                    <h1 class="text-3xl font-bold mb-6">💰 Отчёт по погашениям</h1>
+
+                    <!-- Фильтры -->
+                    <div class="bg-white p-6 rounded-lg shadow mb-6">
+                        <h2 class="text-xl font-bold mb-4">Фильтры</h2>
+                        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                            <div>
+                                <label for="paymentsReportDateFrom" class="block text-sm font-medium mb-2">Период с:</label>
+                                <input type="date" id="paymentsReportDateFrom" class="w-full p-2 border rounded">
+                            </div>
+                            <div>
+                                <label for="paymentsReportDateTo" class="block text-sm font-medium mb-2">Период по:</label>
+                                <input type="date" id="paymentsReportDateTo" class="w-full p-2 border rounded">
+                            </div>
+                            <div>
+                                <label for="paymentsReportWarehouse" class="block text-sm font-medium mb-2">Склад:</label>
+                                <select id="paymentsReportWarehouse" class="w-full p-2 border rounded">
+                                    <option value="">Все склады</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label for="paymentsReportClient" class="block text-sm font-medium mb-2">Клиент:</label>
+                                <select id="paymentsReportClient" class="w-full p-2 border rounded">
+                                    <option value="">Все клиенты</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="mt-4 flex gap-2">
+                            <button id="generatePaymentsReportBtn" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
+                                📊 Сформировать отчет
+                            </button>
+                            <button id="printPaymentsReportBtn" class="bg-gray-600 text-white px-4 py-2 rounded hover:bg-gray-700">
+                                🖨️ Печать
+                            </button>
+                            <button id="exportPaymentsReportExcelBtn" class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">
+                                📊 Excel
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Таблица отчета -->
+                    <div id="paymentsReportResults" class="bg-white rounded-lg shadow overflow-x-auto hidden">
+                        <table class="w-full">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th class="p-3 text-left">Дата</th>
+                                    <th class="p-3 text-left">Клиент</th>
+                                    <th class="p-3 text-right">Сомони</th>
+                                    <th class="p-3 text-right">Курс</th>
+                                    <th class="p-3 text-right">Сумма</th>
+                                    <th class="p-3 text-left">Примечания</th>
+                                    <th class="p-3 text-left">Пользователь</th>
+                                </tr>
+                            </thead>
+                            <tbody id="paymentsReportTableBody">
+                                <tr><td colspan="7" class="p-4 text-center text-gray-500">Нажмите "Сформировать отчет"</td></tr>
+                            </tbody>
+                            <tfoot class="bg-blue-50 font-bold border-t-2 border-blue-200">
+                                <tr>
+                                    <td class="p-3" colspan="2">ИТОГО:</td>
+                                    <td class="p-3 text-right text-blue-700" id="paymentsReportTotalSomoni">0.00</td>
+                                    <td class="p-3"></td>
+                                    <td class="p-3 text-right text-blue-700" id="paymentsReportTotalDollar">0.00</td>
+                                    <td class="p-3" colspan="2"></td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Отчет за текущий день -->
+                <div id="daily-report" class="content-section">
+                    <div class="mb-4">
+                        <button id="backToReportsFromDailyBtn" class="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600">
+                            ← Назад к списку отчетов
+                        </button>
+                    </div>
+                    <h1 class="text-3xl font-bold mb-6">📅 Отчёт за текущий день</h1>
+
+                    <!-- Фильтры -->
+                    <div class="bg-white p-6 rounded-lg shadow mb-6">
+                        <h2 class="text-xl font-bold mb-4">Выберите дату</h2>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label for="dailyReportDate" class="block text-sm font-medium mb-2">Дата:</label>
+                                <input type="date" id="dailyReportDate" class="w-full p-2 border rounded">
+                            </div>
+                        </div>
+
+                        <div class="mt-4 flex gap-2">
+                            <button id="generateDailyReportBtn" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
+                                📊 Сформировать отчет
+                            </button>
+                            <button id="printDailyReportBtn" class="bg-gray-600 text-white px-4 py-2 rounded hover:bg-gray-700">
+                                🖨️ Печать
+                            </button>
+                            <button id="exportDailyReportExcelBtn" class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">
+                                📊 Excel
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Таблицы отчета -->
+                    <div id="dailyReportResults" class="hidden">
+                        <!-- Сводка за день -->
+                        <div id="dailyReportSummary" class="mb-6">
+                            <!-- Сводка будет добавлена динамически -->
+                        </div>
+
+                        <!-- Приходы -->
+                        <div class="bg-white rounded-lg shadow overflow-x-auto mb-6">
+                            <h2 class="text-xl font-bold p-4 bg-green-50">📥 Приходы товаров</h2>
+                            <table class="w-full">
+                                <thead class="bg-gray-50">
+                                    <tr>
+                                        <th class="p-3 text-left">Дата</th>
+                                        <th class="p-3 text-left">Вагон</th>
+                                        <th class="p-3 text-left">Фирма</th>
+                                        <th class="p-3 text-left">Склад</th>
+                                        <th class="p-3 text-left">Товар</th>
+                                        <th class="p-3 text-right">По док</th>
+                                        <th class="p-3 text-right">Факт</th>
+                                        <th class="p-3 text-right">Разница</th>
+                                        <th class="p-3 text-right">Тонн</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="dailyReportIncomeTableBody">
+                                    <tr><td colspan="9" class="p-4 text-center text-gray-500">Нажмите "Сформировать отчет"</td></tr>
+                                </tbody>
+                                <tfoot class="bg-green-50 font-bold border-t-2 border-green-200">
+                                    <tr>
+                                        <td class="p-3" colspan="5">ИТОГО:</td>
+                                        <td class="p-3 text-right text-green-700" id="dailyReportIncomeTotalQtyDoc">0</td>
+                                        <td class="p-3 text-right text-green-700" id="dailyReportIncomeTotalQtyFact">0</td>
+                                        <td class="p-3"></td>
+                                        <td class="p-3 text-right text-green-700" id="dailyReportIncomeTotalTons">0.00</td>
+                                    </tr>
+                                </tfoot>
+                            </table>
+                        </div>
+
+                        <!-- Расходы -->
+                        <div class="bg-white rounded-lg shadow overflow-x-auto">
+                            <h2 class="text-xl font-bold p-4 bg-blue-50">📤 Расходы товаров</h2>
+                            <table class="w-full">
+                                <thead class="bg-gray-50">
+                                    <tr>
+                                        <th class="p-3 text-left">Дата</th>
+                                        <th class="p-3 text-left">Фирма</th>
+                                        <th class="p-3 text-left">Склад</th>
+                                        <th class="p-3 text-left">Товар</th>
+                                        <th class="p-3 text-left">Клиент</th>
+                                        <th class="p-3 text-right">Количество</th>
+                                        <th class="p-3 text-right">Тонн</th>
+                                        <th class="p-3 text-right">Цена</th>
+                                        <th class="p-3 text-right">Сумма</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="dailyReportExpenseTableBody">
+                                    <tr><td colspan="9" class="p-4 text-center text-gray-500">Нажмите "Сформировать отчет"</td></tr>
+                                </tbody>
+                                <tfoot class="bg-blue-50 font-bold border-t-2 border-blue-200">
+                                    <tr>
+                                        <td class="p-3" colspan="5">ИТОГО:</td>
+                                        <td class="p-3 text-right text-blue-700" id="dailyReportExpenseTotalQty">0</td>
+                                        <td class="p-3 text-right text-blue-700" id="dailyReportExpenseTotalTons">0.00</td>
+                                        <td class="p-3"></td>
+                                        <td class="p-3 text-right text-blue-700" id="dailyReportExpenseTotalSum">0.00</td>
+                                    </tr>
+                                </tfoot>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Отчет по расходу товаров -->
+                <div id="expense-report" class="content-section">
+                    <div class="mb-4">
+                        <button id="backToReportsFromExpenseBtn" class="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600">
+                            ← Назад к списку отчетов
+                        </button>
+                    </div>
+                    <h1 class="text-3xl font-bold mb-6">📤 Отчёт по расходу товаров</h1>
+
+                    <!-- Фильтры -->
+                    <div class="bg-white p-6 rounded-lg shadow mb-6">
+                        <h2 class="text-xl font-bold mb-4">Фильтры</h2>
+                        <div class="grid grid-cols-1 md:grid-cols-5 gap-4">
+                            <div>
+                                <label for="expenseReportDateFrom" class="block text-sm font-medium mb-2">Период с:</label>
+                                <input type="date" id="expenseReportDateFrom" class="w-full p-2 border rounded">
+                            </div>
+                            <div>
+                                <label for="expenseReportDateTo" class="block text-sm font-medium mb-2">Период по:</label>
+                                <input type="date" id="expenseReportDateTo" class="w-full p-2 border rounded">
+                            </div>
+                            <div>
+                                <label for="expenseReportWarehouse" class="block text-sm font-medium mb-2">Склад:</label>
+                                <select id="expenseReportWarehouse" class="w-full p-2 border rounded">
+                                    <option value="">Все склады</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label for="expenseReportProduct" class="block text-sm font-medium mb-2">Товар:</label>
+                                <select id="expenseReportProduct" class="w-full p-2 border rounded">
+                                    <option value="">Все товары</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label for="expenseReportClient" class="block text-sm font-medium mb-2">Клиент:</label>
+                                <select id="expenseReportClient" class="w-full p-2 border rounded">
+                                    <option value="">Все клиенты</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="mt-4 flex gap-2">
+                            <button id="generateExpenseReportBtn" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
+                                📊 Сформировать отчет
+                            </button>
+                            <button id="printExpenseReportBtn" class="bg-gray-600 text-white px-4 py-2 rounded hover:bg-gray-700">
+                                🖨️ Печать
+                            </button>
+                            <button id="exportExpenseReportExcelBtn" class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">
+                                📊 Excel
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Таблица отчета -->
+                    <div id="expenseReportResults" class="bg-white rounded-lg shadow overflow-x-auto hidden">
+                        <table class="w-full">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th class="p-3 text-left">Дата</th>
+                                    <th class="p-3 text-left">Фирма</th>
+                                    <th class="p-3 text-left">Склад</th>
+                                    <th class="p-3 text-left">Товар</th>
+                                    <th class="p-3 text-left">Клиент</th>
+                                    <th class="p-3 text-right">Количество</th>
+                                    <th class="p-3 text-right">Тонн</th>
+                                    <th class="p-3 text-right">Цена</th>
+                                    <th class="p-3 text-right">Сумма</th>
+                                    <th class="p-3 text-left">Пользователь</th>
+                                </tr>
+                            </thead>
+                            <tbody id="expenseReportTableBody">
+                                <tr><td colspan="10" class="p-4 text-center text-gray-500">Нажмите "Сформировать отчет"</td></tr>
+                            </tbody>
+                            <tfoot class="bg-blue-50 font-bold border-t-2 border-blue-200">
+                                <tr>
+                                    <td class="p-3" colspan="5">ИТОГО:</td>
+                                    <td class="p-3 text-right text-blue-700" id="expenseReportTotalQty">0</td>
+                                    <td class="p-3 text-right text-blue-700" id="expenseReportTotalTons">0.00</td>
+                                    <td class="p-3"></td>
+                                    <td class="p-3 text-right text-blue-700" id="expenseReportTotalSum">0.00</td>
+                                    <td class="p-3"></td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Отчет по приходу товаров -->
+                <div id="income-report" class="content-section">
+                    <div class="mb-4">
+                        <button id="backToReportsFromIncomeBtn" class="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600">
+                            ← Назад к списку отчетов
+                        </button>
+                    </div>
+                    <h1 class="text-3xl font-bold mb-6">📥 Отчёт по приходу товаров</h1>
+
+                    <!-- Фильтры -->
+                    <div class="bg-white p-6 rounded-lg shadow mb-6">
+                        <h2 class="text-xl font-bold mb-4">Фильтры</h2>
+                        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                            <div>
+                                <label for="incomeReportDateFrom" class="block text-sm font-medium mb-2">Период с:</label>
+                                <input type="date" id="incomeReportDateFrom" class="w-full p-2 border rounded">
+                            </div>
+                            <div>
+                                <label for="incomeReportDateTo" class="block text-sm font-medium mb-2">Период по:</label>
+                                <input type="date" id="incomeReportDateTo" class="w-full p-2 border rounded">
+                            </div>
+                            <div>
+                                <label for="incomeReportWarehouse" class="block text-sm font-medium mb-2">Склад:</label>
+                                <select id="incomeReportWarehouse" class="w-full p-2 border rounded">
+                                    <option value="">Все склады</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label for="incomeReportProduct" class="block text-sm font-medium mb-2">Товар:</label>
+                                <select id="incomeReportProduct" class="w-full p-2 border rounded">
+                                    <option value="">Все товары</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label for="incomeReportCompany" class="block text-sm font-medium mb-2">Фирма:</label>
+                                <select id="incomeReportCompany" class="w-full p-2 border rounded">
+                                    <option value="">Все фирмы</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="mt-4 flex gap-2">
+                            <button id="generateIncomeReportBtn" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
+                                📊 Сформировать отчет
+                            </button>
+                            <button id="printIncomeReportBtn" class="bg-gray-600 text-white px-4 py-2 rounded hover:bg-gray-700">
+                                🖨️ Печать
+                            </button>
+                            <button id="exportIncomeReportExcelBtn" class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">
+                                📊 Excel
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Таблица отчета -->
+                    <div id="incomeReportResults" class="bg-white rounded-lg shadow overflow-x-auto hidden">
+                        <table class="w-full">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th class="p-3 text-left">Дата</th>
+                                    <th class="p-3 text-left">Вагон</th>
+                                    <th class="p-3 text-left">Фирма</th>
+                                    <th class="p-3 text-left">Склад</th>
+                                    <th class="p-3 text-left">Товар</th>
+                                    <th class="p-3 text-right">По док</th>
+                                    <th class="p-3 text-right">Факт</th>
+                                    <th class="p-3 text-right">Разница</th>
+                                    <th class="p-3 text-right">Тонн</th>
+                                    <th class="p-3 text-left">Пользователь</th>
+                                </tr>
+                            </thead>
+                            <tbody id="incomeReportTableBody">
+                                <tr><td colspan="10" class="p-4 text-center text-gray-500">Нажмите "Сформировать отчет"</td></tr>
+                            </tbody>
+                            <tfoot class="bg-blue-50 font-bold border-t-2 border-blue-200">
+                                <tr>
+                                    <td class="p-3" colspan="5">ИТОГО:</td>
+                                    <td class="p-3 text-right text-blue-700" id="incomeReportTotalQtyDoc">0</td>
+                                    <td class="p-3 text-right text-blue-700" id="incomeReportTotalQtyFact">0</td>
+                                    <td class="p-3"></td>
+                                    <td class="p-3 text-right text-blue-700" id="incomeReportTotalTons">0.00</td>
+                                    <td class="p-3"></td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Отчет расход по клиентам -->
+                <div id="client-report" class="content-section">
+                    <div class="mb-4">
+                        <button id="backToReportsFromClientBtn" class="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600">
+                            ← Назад к списку отчетов
+                        </button>
+                    </div>
+                    <h1 class="text-3xl font-bold mb-6">👤 Расход по клиентам</h1>
+
+                    <!-- Фильтры -->
+                    <div class="bg-white p-6 rounded-lg shadow mb-6">
+                        <h2 class="text-xl font-bold mb-4">Фильтры</h2>
+                        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                            <div>
+                                <label for="clientReportDateFrom" class="block text-sm font-medium mb-2">Период с:</label>
+                                <input type="date" id="clientReportDateFrom" class="w-full p-2 border rounded">
+                            </div>
+                            <div>
+                                <label for="clientReportDateTo" class="block text-sm font-medium mb-2">Период по:</label>
+                                <input type="date" id="clientReportDateTo" class="w-full p-2 border rounded">
+                            </div>
+                            <div>
+                                <label for="clientReportClient" class="block text-sm font-medium mb-2">Клиент:</label>
+                                <select id="clientReportClient" class="w-full p-2 border rounded">
+                                    <option value="">Все клиенты</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label for="clientReportWarehouse" class="block text-sm font-medium mb-2">Склад:</label>
+                                <select id="clientReportWarehouse" class="w-full p-2 border rounded">
+                                    <option value="">Все склады</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="mt-4 flex gap-2">
+                            <button id="generateClientReportBtn" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
+                                📊 Сформировать отчет
+                            </button>
+                            <button id="printClientReportBtn" class="bg-gray-600 text-white px-4 py-2 rounded hover:bg-gray-700">
+                                🖨️ Печать
+                            </button>
+                            <button id="exportClientReportExcelBtn" class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">
+                                📊 Excel
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Таблица отчета -->
+                    <div id="clientReportResults" class="bg-white rounded-lg shadow overflow-x-auto hidden">
+                        <table class="w-full">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th class="p-3 text-left">Дата</th>
+                                    <th class="p-3 text-left">Коалица</th>
+                                    <th class="p-3 text-left">Номер</th>
+                                    <th class="p-3 text-left">Клиент</th>
+                                    <th class="p-3 text-left">Товар</th>
+                                    <th class="p-3 text-left">Фирма</th>
+                                    <th class="p-3 text-left">Склад</th>
+                                    <th class="p-3 text-right">Количество</th>
+                                    <th class="p-3 text-right">Вес тонн</th>
+                                    <th class="p-3 text-right">Цена</th>
+                                    <th class="p-3 text-right">Сумма</th>
+                                    <th class="p-3 text-left">Примечания</th>
+                                    <th class="p-3 text-left">Пользователь</th>
+                                </tr>
+                            </thead>
+                            <tbody id="clientReportTableBody">
+                                <tr><td colspan="13" class="p-4 text-center text-gray-500">Нажмите "Сформировать отчет"</td></tr>
+                            </tbody>
+                            <tfoot class="bg-blue-50 font-bold border-t-2 border-blue-200">
+                                <tr>
+                                    <td class="p-3" colspan="7">ИТОГО:</td>
+                                    <td class="p-3 text-right text-blue-700" id="clientReportTotalQty">0</td>
+                                    <td class="p-3 text-right text-blue-700" id="clientReportTotalTons">0.00</td>
+                                    <td class="p-3"></td>
+                                    <td class="p-3 text-right text-blue-700" id="clientReportTotalSum">0.00</td>
+                                    <td class="p-3" colspan="2"></td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Отчет по складам -->
+                <div id="warehouse-report" class="content-section">
+                    <div class="mb-4">
+                        <button id="backToReportsFromWarehouseBtn" class="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600">
+                            ← Назад к списку отчетов
+                        </button>
+                    </div>
+                    <h1 class="text-3xl font-bold mb-6">🏢 Отчёт по складам</h1>
+
+                    <!-- Фильтры -->
+                    <div class="bg-white p-6 rounded-lg shadow mb-6">
+                        <h2 class="text-xl font-bold mb-4">Фильтры</h2>
+                        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                            <div>
+                                <label for="warehouseReportDateFrom" class="block text-sm font-medium mb-2">Период с:</label>
+                                <input type="date" id="warehouseReportDateFrom" class="w-full p-2 border rounded">
+                            </div>
+                            <div>
+                                <label for="warehouseReportDateTo" class="block text-sm font-medium mb-2">Период по:</label>
+                                <input type="date" id="warehouseReportDateTo" class="w-full p-2 border rounded">
+                            </div>
+                            <div>
+                                <label for="warehouseReportWarehouse" class="block text-sm font-medium mb-2">Склад:</label>
+                                <select id="warehouseReportWarehouse" class="w-full p-2 border rounded">
+                                    <option value="">Все склады</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label for="warehouseReportProduct" class="block text-sm font-medium mb-2">Товар:</label>
+                                <select id="warehouseReportProduct" class="w-full p-2 border rounded">
+                                    <option value="">Все товары</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="mt-4 flex gap-2">
+                            <button id="generateWarehouseReportBtn" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
+                                📊 Сформировать отчет
+                            </button>
+                            <button id="printWarehouseReportBtn" class="bg-gray-600 text-white px-4 py-2 rounded hover:bg-gray-700">
+                                🖨️ Печать
+                            </button>
+                            <button id="exportWarehouseReportExcelBtn" class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">
+                                📊 Excel
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Таблица отчета -->
+                    <div id="warehouseReportResults" class="bg-white rounded-lg shadow overflow-x-auto hidden">
+                        <table class="w-full">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th class="p-3 text-left">Фирма</th>
+                                    <th class="p-3 text-left">Склад</th>
+                                    <th class="p-3 text-left">Товар</th>
+                                    <th class="p-3 text-right">Приход</th>
+                                    <th class="p-3 text-right">Расход</th>
+                                    <th class="p-3 text-right">Остаток</th>
+                                    <th class="p-3 text-right">Остаток тонн</th>
+                                </tr>
+                            </thead>
+                            <tbody id="warehouseReportTableBody">
+                                <tr><td colspan="7" class="p-4 text-center text-gray-500">Нажмите "Сформировать отчет"</td></tr>
+                            </tbody>
+                            <tfoot class="bg-blue-50 font-bold border-t-2 border-blue-200">
+                                <tr>
+                                    <td class="p-3" colspan="3">ИТОГО:</td>
+                                    <td class="p-3 text-right text-blue-700" id="warehouseReportTotalIncome">0</td>
+                                    <td class="p-3 text-right text-blue-700" id="warehouseReportTotalExpense">0</td>
+                                    <td class="p-3 text-right text-blue-700" id="warehouseReportTotalBalance">0</td>
+                                    <td class="p-3 text-right text-blue-700" id="warehouseReportTotalBalanceTons">0.00</td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Карточка клиента -->
+                <div id="client-card" class="content-section">
+                    <div class="mb-4">
+                        <button id="backToReportsFromClientCardBtn" class="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600">
+                            ← Назад к списку отчетов
+                        </button>
+                    </div>
+                    <h1 class="text-3xl font-bold mb-6">📇 Карточка клиента</h1>
+
+                    <!-- Фильтры -->
+                    <div class="bg-white p-6 rounded-lg shadow mb-6">
+                        <h2 class="text-xl font-bold mb-4">Фильтры</h2>
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div>
+                                <label for="clientCardClientInput" class="block text-sm font-medium mb-2">Клиент:</label>
+                                <input 
+                                    type="text" 
+                                    id="clientCardClientInput" 
+                                    class="w-full p-2 border rounded" 
+                                    placeholder="Введите имя клиента..."
+                                    list="clientCardClientList"
+                                >
+                                <datalist id="clientCardClientList"></datalist>
+                                <div class="mt-2">
+                                    <label class="flex items-center gap-2 text-sm">
+                                        <input type="checkbox" id="clientCardShowAllClients" class="rounded">
+                                        <span>Показать всех клиентов</span>
+                                    </label>
+                                </div>
+                            </div>
+                            <div>
+                                <label for="clientCardDateFrom" class="block text-sm font-medium mb-2">Период с:</label>
+                                <input type="date" id="clientCardDateFrom" class="w-full p-2 border rounded">
+                            </div>
+                            <div>
+                                <label for="clientCardDateTo" class="block text-sm font-medium mb-2">Период по:</label>
+                                <input type="date" id="clientCardDateTo" class="w-full p-2 border rounded">
+                            </div>
+                        </div>
+
+                        <div class="mt-4 flex gap-2">
+                            <button id="generateClientCardBtn" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
+                                📊 Сформировать отчет
+                            </button>
+                            <button id="printClientCardBtn" class="bg-gray-600 text-white px-4 py-2 rounded hover:bg-gray-700">
+                                🖨️ Печать
+                            </button>
+                            <button id="exportClientCardBtn" class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">
+                                📊 Excel
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Результаты -->
+                    <div id="clientCardResults">
+                        <div class="p-8 text-center text-gray-500">
+                            <p class="text-lg">Нажмите "Сформировать отчет" для просмотра карточки клиента</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Итоги Вагонов -->
+                <div id="wagon-totals" class="content-section">
+                    <div class="flex justify-between items-center mb-6">
+                        <h1 class="text-3xl font-bold">📊 Итоги Вагонов</h1>
+                        <div class="flex gap-2">
+                            <button id="printWagonTotals" class="bg-gray-600 text-white px-4 py-2 rounded hover:bg-gray-700 flex items-center gap-2">
+                                🖨️ Печать
+                            </button>
+                            <button id="excelWagonTotals" class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 flex items-center gap-2">
+                                📊 Excel
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="bg-white p-6 rounded-lg shadow mb-6">
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <!-- Группы складов -->
+                            <div class="relative">
+                                <label class="block text-sm font-medium mb-2">Группа складов</label>
+                                <button type="button" id="totalsGroupsDropdownBtn" class="w-full p-2 border rounded text-left bg-white hover:bg-gray-50 flex justify-between items-center">
+                                    <span id="totalsGroupsSelected">Все группы</span>
+                                    <span>▼</span>
+                                </button>
+                                <div id="totalsGroupsDropdown" class="hidden absolute z-10 w-full mt-1 bg-white border rounded shadow-lg max-h-60 overflow-y-auto">
+                                    <div class="p-2 border-b bg-gray-50 flex gap-2">
+                                        <button type="button" onclick="selectAllTotalsGroups()" class="text-xs text-blue-600 hover:underline">Все</button>
+                                        <button type="button" onclick="clearAllTotalsGroups()" class="text-xs text-blue-600 hover:underline">Очистить</button>
+                                    </div>
+                                    <div id="totalsGroupsList" class="p-2">
+                                        <p class="text-sm text-gray-500">Загрузка...</p>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Склады -->
+                            <div class="relative">
+                                <label class="block text-sm font-medium mb-2">Склад</label>
+                                <button type="button" id="totalsWarehousesDropdownBtn" class="w-full p-2 border rounded text-left bg-white hover:bg-gray-50 flex justify-between items-center">
+                                    <span id="totalsWarehousesSelected">Все склады</span>
+                                    <span>▼</span>
+                                </button>
+                                <div id="totalsWarehousesDropdown" class="hidden absolute z-10 w-full mt-1 bg-white border rounded shadow-lg max-h-60 overflow-y-auto">
+                                    <div class="p-2 border-b bg-gray-50 flex gap-2">
+                                        <button type="button" onclick="selectAllTotalsWarehouses()" class="text-xs text-blue-600 hover:underline">Все</button>
+                                        <button type="button" onclick="clearAllTotalsWarehouses()" class="text-xs text-blue-600 hover:underline">Очистить</button>
+                                    </div>
+                                    <div id="totalsWarehousesList" class="p-2">
+                                        <p class="text-sm text-gray-500">Загрузка...</p>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Товары -->
+                            <div class="relative">
+                                <label class="block text-sm font-medium mb-2">Товары</label>
+                                <button type="button" id="totalsProductsDropdownBtn" class="w-full p-2 border rounded text-left bg-white hover:bg-gray-50 flex justify-between items-center">
+                                    <span id="totalsProductsSelected">Все товары</span>
+                                    <span>▼</span>
+                                </button>
+                                <div id="totalsProductsDropdown" class="hidden absolute z-10 w-full mt-1 bg-white border rounded shadow-lg max-h-60 overflow-y-auto">
+                                    <div class="p-2 border-b bg-gray-50 flex gap-2">
+                                        <button type="button" onclick="selectAllTotalsProducts()" class="text-xs text-blue-600 hover:underline">Все</button>
+                                        <button type="button" onclick="clearAllTotalsProducts()" class="text-xs text-blue-600 hover:underline">Очистить</button>
+                                    </div>
+                                    <div id="totalsProductsList" class="p-2">
+                                        <p class="text-sm text-gray-500">Загрузка...</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="mt-4 flex gap-2">
+                            <button id="updateWagonTotalsBtn" class="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700">
+                                Обновить
+                            </button>
+                            <button id="clearTotalsFiltersBtn" class="bg-gray-500 text-white px-6 py-2 rounded hover:bg-gray-600">
+                                Сбросить фильтры
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="bg-white rounded-lg shadow overflow-x-auto">
+                        <table class="w-full">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th class="p-3 text-left">Товар</th>
+                                    <th class="p-3 text-left">Фирма</th>
+                                    <th class="p-3 text-left">Склад</th>
+                                    <th class="p-3 text-right">Количество вагонов</th>
+                                    <th class="p-3 text-right">Приход по док</th>
+                                    <th class="p-3 text-right">Приход по факт</th>
+                                    <th class="p-3 text-right">Разница</th>
+                                    <th class="p-3 text-right">Вес тонн</th>
+                                </tr>
+                            </thead>
+                            <tbody id="wagonTotalsTableBody">
+                                <tr><td colspan="8" class="p-4 text-center text-gray-500">Загрузка...</td></tr>
+                            </tbody>
+                            <tfoot class="bg-blue-50 font-bold border-t-2 border-blue-200">
+                                <tr>
+                                    <td class="p-3" colspan="3">ИТОГО:</td>
+                                    <td class="p-3 text-right text-blue-700" id="totalWagonsCount">0</td>
+                                    <td class="p-3 text-right text-blue-700" id="totalQtyDoc">0</td>
+                                    <td class="p-3 text-right text-blue-700" id="totalQtyFact">0</td>
+                                    <td class="p-3 text-right text-blue-700" id="totalDifference">0</td>
+                                    <td class="p-3 text-right text-blue-700" id="totalWeight">0</td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Отчёты -->
+                <div id="reports" class="content-section">
+                    <h1 class="text-3xl font-bold mb-6">📋 Отчёты</h1>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
+                        <button class="report-btn bg-emerald-600 text-white p-4 rounded hover:bg-emerald-700" data-report="daily-report">
+                            📅 Отчёт за текущий день
+                        </button>
+                        <button class="report-btn bg-blue-600 text-white p-4 rounded hover:bg-blue-700" data-report="product-expense">
+                            📤 Отчёт по расходу товаров
+                        </button>
+                        <button class="report-btn bg-green-600 text-white p-4 rounded hover:bg-green-700" data-report="product-income">
+                            📥 Отчёт по приходу товаров
+                        </button>
+                        <button class="report-btn bg-purple-600 text-white p-4 rounded hover:bg-purple-700" data-report="client-expense">
+                            👤 Расход по клиентам
+                        </button>
+                        <button class="report-btn bg-orange-600 text-white p-4 rounded hover:bg-orange-700" data-report="client-period">
+                            📊 Расход по клиентам за период
+                        </button>
+                        <button class="report-btn bg-indigo-600 text-white p-4 rounded hover:bg-indigo-700" data-report="warehouse-report">
+                            🏢 Отчёт по складам
+                        </button>
+                        <button class="report-btn bg-teal-600 text-white p-4 rounded hover:bg-teal-700" data-report="payments-report">
+                            💰 Отчёт по погашениям
+                        </button>
+                        <button class="report-btn bg-rose-600 text-white p-4 rounded hover:bg-rose-700" data-report="client-card">
+                            📇 Карточка клиента
+                        </button>
+                    </div>
+
+                    <div id="reportFilters" class="bg-white p-4 rounded-lg shadow mb-6 hidden">
+                        <h3 class="text-lg font-semibold mb-4">Фильтры</h3>
+                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                            <div>
+                                <label for="reportDateFrom" class="block text-sm font-medium mb-2">Дата с</label>
+                                <input type="date" id="reportDateFrom" class="w-full p-2 border rounded">
+                            </div>
+                            <div>
+                                <label for="reportDateTo" class="block text-sm font-medium mb-2">Дата по</label>
+                                <input type="date" id="reportDateTo" class="w-full p-2 border rounded">
+                            </div>
+                            <div>
+                                <label for="reportWarehouse" class="block text-sm font-medium mb-2">Склад</label>
+                                <select id="reportWarehouse" class="w-full p-2 border rounded">
+                                    <option value="">Все склады</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label for="reportClient" class="block text-sm font-medium mb-2">Клиент</label>
+                                <select id="reportClient" class="w-full p-2 border rounded">
+                                    <option value="">Все клиенты</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="mt-4 flex gap-4">
+                            <button id="generateReport" class="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700">
+                                Сформировать отчёт
+                            </button>
+                            <button id="exportReportToExcel" class="bg-green-600 text-white px-6 py-2 rounded hover:bg-green-700 hidden">
+                                📊 Экспорт в Excel
+                            </button>
+                        </div>
+                    </div>
+
+                    <div id="reportResults" class="bg-white rounded-lg shadow overflow-x-auto hidden">
+                        <div class="p-4 border-b">
+                            <h3 id="reportTitle" class="text-lg font-semibold"></h3>
+                        </div>
+                        <div id="reportContent"></div>
+                    </div>
+                </div>
+
+                <!-- Управление -->
+                <div id="management" class="content-section">
+                    <h1 class="text-3xl font-bold mb-6">⚙️ Управление</h1>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <!-- Фирмы -->
+                        <div id="mgmt-companies" class="bg-white p-6 rounded-lg shadow">
+                            <h2 class="text-xl font-bold mb-4">🏢 Фирмы</h2>
+                            <form id="addCompanyForm" class="mb-4">
+                                <div class="flex gap-2">
+                                    <input type="text" id="companyName" class="flex-1 p-2 border rounded" 
+                                        placeholder="Название фирмы" required>
+                                    <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
+                                        Добавить
+                                    </button>
+                                </div>
+                            </form>
+                            <div class="overflow-x-auto">
+                                <table class="w-full">
+                                    <thead class="bg-gray-50">
+                                        <tr>
+                                            <th class="p-2 text-left">Название</th>
+                                            <th class="p-2 text-center">№</th>
+                                            <th class="p-2 text-center">Действия</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="companiesTableBody">
+                                        <tr><td colspan="3" class="p-4 text-center text-gray-500">Загрузка...</td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <!-- Склады -->
+                        <div id="mgmt-warehouses" class="bg-white p-6 rounded-lg shadow">
+                            <form id="addWarehouseForm" class="mb-4">
+                                <div class="flex flex-col gap-2">
+                                    <input type="text" id="warehouseName" class="p-2 border rounded" 
+                                        placeholder="Название склада" required>
+                                    <input type="text" id="warehouseGroup" class="p-2 border rounded" 
+                                        placeholder="Группа (необязательно)">
+                                    <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
+                                        Добавить
+                                    </button>
+                                </div>
+                            </form>
+                            <div class="overflow-x-auto">
+                                <table class="w-full">
+                                    <thead class="bg-gray-50">
+                                        <tr>
+                                            <th class="p-2 text-left">Название</th>
+                                            <th class="p-2 text-left">Группа</th>
+                                            <th class="p-2 text-center">№</th>
+                                            <th class="p-2 text-center">Действия</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="warehousesTableBody">
+                                        <tr><td colspan="4" class="p-4 text-center text-gray-500">Загрузка...</td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <!-- Товары -->
+                        <div id="mgmt-products" class="bg-white p-6 rounded-lg shadow">
+                            <form id="addProductForm" class="mb-4">
+                                <div class="flex gap-2">
+                                    <input type="text" id="productName" class="flex-1 p-2 border rounded" 
+                                        placeholder="Название товара" required>
+                                    <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
+                                        Добавить
+                                    </button>
+                                </div>
+                            </form>
+                            <div class="overflow-x-auto">
+                                <table class="w-full">
+                                    <thead class="bg-gray-50">
+                                        <tr>
+                                            <th class="p-2 text-left">Название</th>
+                                            <th class="p-2 text-center">№</th>
+                                            <th class="p-2 text-center">Действия</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="productsTableBody">
+                                        <tr><td colspan="3" class="p-4 text-center text-gray-500">Загрузка...</td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <!-- Клиенты -->
+                        <div class="bg-white p-6 rounded-lg shadow">
+                            <h2 class="text-xl font-bold mb-4">👥 Клиенты</h2>
+                            <form id="addClientForm" class="mb-4">
+                                <div class="flex flex-col gap-2">
+                                    <input type="text" id="clientName" class="p-2 border rounded" 
+                                        placeholder="Имя клиента" required>
+                                    <input type="text" id="clientPhone" class="p-2 border rounded" 
+                                        placeholder="Телефон (необязательно)">
+                                    <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
+                                        Добавить
+                                    </button>
+                                </div>
+                            </form>
+                            <div class="overflow-x-auto">
+                                <table class="w-full">
+                                    <thead class="bg-gray-50">
+                                        <tr>
+                                            <th class="p-2 text-left">Имя</th>
+                                            <th class="p-2 text-left">Телефон</th>
+                                            <th class="p-2 text-center">№</th>
+                                            <th class="p-2 text-center">Действия</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="clientsTableBody">
+                                        <tr><td colspan="4" class="p-4 text-center text-gray-500">Загрузка...</td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <!-- Коалиции -->
+                        <div id="mgmt-coalitions" class="bg-white p-6 rounded-lg shadow">
+                            <form id="addCoalitionForm" class="mb-4">
+                                <div class="flex gap-2">
+                                    <input type="text" id="coalitionName" class="flex-1 p-2 border rounded" 
+                                        placeholder="Название коалиции" required>
+                                    <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
+                                        Добавить
+                                    </button>
+                                </div>
+                            </form>
+                            <div class="overflow-x-auto">
+                                <table class="w-full">
+                                    <thead class="bg-gray-50">
+                                        <tr>
+                                            <th class="p-2 text-left">Название</th>
+                                            <th class="p-2 text-center">№</th>
+                                            <th class="p-2 text-center">Действия</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="coalitionsTableBody">
+                                        <tr><td colspan="3" class="p-4 text-center text-gray-500">Загрузка...</td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Управление ценами на товары -->
+                    <div id="priceManagementBlock" class="mt-6 bg-white p-6 rounded-lg shadow">
+                        <h3 class="text-xl font-bold mb-4">💰 Управление ценами на товары</h3>
+
+                        <!-- Форма добавления/обновления цены -->
+                        <div class="bg-blue-50 p-4 rounded-lg mb-6">
+                            <h4 class="font-medium mb-3">Установить цену на товар</h4>
+                            <form id="priceForm" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-3">
+                                <div>
+                                    <label for="priceProduct" class="block text-sm font-medium mb-1">Товар</label>
+                                    <select id="priceProduct" class="w-full p-2 border rounded" required>
+                                        <option value="">Выберите товар</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label for="priceWarehouseGroup" class="block text-sm font-medium mb-1">Группа складов</label>
+                                    <select id="priceWarehouseGroup" class="w-full p-2 border rounded" required>
+                                        <option value="ALL">🌍 Все склады</option>
+                                        <option value="A">Группа A</option>
+                                        <option value="B">Группа B</option>
+                                        <option value="C">Группа C</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label for="priceValue" class="block text-sm font-medium mb-1">Цена за тонну</label>
+                                    <input type="number" id="priceValue" placeholder="0.00" step="0.01" min="0"
+                                        class="w-full p-2 border rounded" required>
+                                </div>
+                                <div>
+                                    <label for="priceDate" class="block text-sm font-medium mb-1">Дата действия</label>
+                                    <input type="date" id="priceDate" class="w-full p-2 border rounded" required>
+                                </div>
+                                <div class="flex items-end">
+                                    <button type="submit" class="w-full bg-green-600 text-white p-2 rounded hover:bg-green-700">
+                                        💰 Установить
+                                    </button>
+                                </div>
+                            </form>
+                            <div class="text-xs text-gray-600 mt-2">
+                                <p>• Цена устанавливается за тонну товара для выбранной группы складов</p>
+                                <p>• При создании расхода цена будет автоматически подставлена</p>
+                                <p>• Сохраняется история всех изменений цен</p>
+                            </div>
+                        </div>
+
+                        <!-- История цен -->
+                        <div>
+                            <div class="flex justify-between items-center mb-3">
+                                <h4 class="font-medium">История цен</h4>
+                                <div class="flex gap-2">
+                                    <select id="priceHistoryFilter" class="p-1 border rounded text-sm">
+                                        <option value="">Все товары</option>
+                                    </select>
+                                    <button id="clearOldPricesBtn" class="bg-red-500 text-white px-3 py-1 rounded text-sm hover:bg-red-600">
+                                        🗑️ Очистить старые
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="overflow-x-auto">
+                                <table class="w-full text-sm">
+                                    <thead class="bg-gray-50">
+                                        <tr>
+                                            <th class="p-2 text-left">Дата</th>
+                                            <th class="p-2 text-left">Товар</th>
+                                            <th class="p-2 text-left">Группа складов</th>
+                                            <th class="p-2 text-left">Цена за тонну</th>
+                                            <th class="p-2 text-left">Установил</th>
+                                            <th class="p-2 text-left">Действия</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="priceHistoryTable">
+                                        <tr><td colspan="6" class="p-4 text-center text-gray-500">Загрузка...</td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Пользователи -->
+                <div id="users" class="content-section">
+                    <h1 class="text-3xl font-bold mb-6">👤 Управление пользователями</h1>
+
+                    <!-- Форма добавления пользователя -->
+                    <div class="bg-white p-6 rounded-lg shadow mb-6">
+                        <h3 class="text-lg font-semibold mb-4">Добавить пользователя</h3>
+                        <form id="userForm" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label for="newUsername" class="block text-sm font-medium mb-2">Логин</label>
+                                <input type="text" id="newUsername" class="w-full p-2 border rounded" required>
+                            </div>
+                            <div>
+                                <label for="newPassword" class="block text-sm font-medium mb-2">Пароль</label>
+                                <input type="password" id="newPassword" class="w-full p-2 border rounded" required>
+                            </div>
+                            <div>
+                                <label for="userRole" class="block text-sm font-medium mb-2">Роль</label>
+                                <select id="userRole" class="w-full p-2 border rounded" required>
+                                    <option value="">Выберите роль</option>
+                                    <option value="admin">Администратор</option>
+                                    <option value="warehouse">Завсклада</option>
+                                    <option value="cashier">Кассир</option>
+                                    <option value="manager">Руководитель</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium mb-2">Группы складов</label>
+                                <div class="border rounded p-3 bg-gray-50 max-h-48 overflow-y-auto">
+                                    <div class="space-y-2" id="userWarehouseGroupCheckboxes">
+                                        <label class="flex items-center gap-2">
+                                            <input type="checkbox" value="" class="rounded warehouse-group-checkbox" checked>
+                                            <span>Все склады</span>
+                                        </label>
+                                    </div>
+                                </div>
+                                <input type="hidden" id="userWarehouseGroup">
+                            </div>
+                            <div class="md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-4 border-t pt-4">
+                                <div>
+                                    <label class="flex items-center gap-2">
+                                        <input type="checkbox" id="userRequirePasswordChange" class="rounded">
+                                        <span class="font-medium">Требуется смена пароля при входе</span>
+                                    </label>
+                                </div>
+                                <div>
+                                    <label class="flex items-center gap-2">
+                                        <input type="checkbox" id="userIsBlocked" class="rounded">
+                                        <span class="font-medium text-red-600">Заблокировать пользователя</span>
+                                    </label>
+                                </div>
+                            </div>
+                            <div class="md:col-span-2 flex gap-4">
+                                <button type="submit" class="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700">
+                                    Добавить пользователя
+                                </button>
+                                <button type="button" id="cancelUserEdit" class="bg-gray-500 text-white px-6 py-2 rounded hover:bg-gray-600 hidden">
+                                    Отмена
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <!-- Смена пароля -->
+                    <div class="bg-white p-6 rounded-lg shadow mb-6">
+                        <h3 class="text-lg font-semibold mb-4">Смена пароля</h3>
+                        <form id="changePasswordForm" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div class="md:col-span-2">
+                                <label for="changePasswordUser" class="block text-sm font-medium mb-2">Пользователь</label>
+                                <select id="changePasswordUser" class="w-full p-2 border rounded" required>
+                                    <option value="">Выберите пользователя</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label for="currentPassword" class="block text-sm font-medium mb-2">Текущий пароль</label>
+                                <input type="password" id="currentPassword" class="w-full p-2 border rounded" required>
+                            </div>
+                            <div>
+                                <label for="newPasswordChange" class="block text-sm font-medium mb-2">Новый пароль</label>
+                                <input type="password" id="newPasswordChange" class="w-full p-2 border rounded" required>
+                            </div>
+                            <div>
+                                <label for="confirmPassword" class="block text-sm font-medium mb-2">Подтвердите пароль</label>
+                                <input type="password" id="confirmPassword" class="w-full p-2 border rounded" required>
+                            </div>
+                            <div class="md:col-span-2">
+                                <button type="submit" class="bg-orange-600 text-white px-6 py-2 rounded hover:bg-orange-700">
+                                    Изменить пароль
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <!-- Таблица пользователей -->
+                    <div class="bg-white rounded-lg shadow overflow-x-auto">
+                        <table class="w-full">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th class="p-3 text-left">Логин</th>
+                                    <th class="p-3 text-left">Роль</th>
+                                    <th class="p-3 text-left">Группа складов</th>
+                                    <th class="p-3 text-left">Статус</th>
+                                    <th class="p-3 text-left">Действия</th>
+                                </tr>
+                            </thead>
+                            <tbody id="usersTableBody">
+                                <tr>
+                                    <td colspan="5" class="p-4 text-center text-gray-500">Загрузка данных...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Управление годами (только для администраторов) -->
+                    <div id="yearManagementSection" class="mt-6 bg-white p-6 rounded-lg shadow hidden">
+                        <h3 class="text-lg font-semibold mb-4">📅 Управление годами <span class="text-sm text-gray-500">(только для администраторов)</span></h3>
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <!-- Добавление нового года -->
+                            <div>
+                                <h4 class="font-medium mb-3">Добавить новый год</h4>
+                                <div class="flex gap-2 mb-3">
+                                    <input type="number" id="newYearInput" placeholder="2027" min="2020" max="2050"
+                                        class="flex-1 p-2 border rounded">
+                                    <button onclick="addNewYearFromInterface()" class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">
+                                        Добавить год
+                                    </button>
+                                </div>
+                                <div class="text-sm text-gray-600">
+                                    <p>• Год должен быть в формате YYYY (например, 2027)</p>
+                                    <p>• Новый год будет создан с пустыми данными</p>
+                                    <p>• После создания вы автоматически переключитесь на новый год</p>
+                                </div>
+                            </div>
+
+                            <!-- Список существующих годов -->
+                            <div>
+                                <h4 class="font-medium mb-3">Существующие года</h4>
+                                <div class="text-xs text-gray-600 mb-2">
+                                    <p>💡 Установите галочку на год, который должен загружаться по умолчанию при входе в систему</p>
+                                </div>
+                                <div id="yearsList" class="space-y-2 max-h-48 overflow-y-auto">
+                                    <!-- Года будут добавлены динамически -->
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Статистика по годам -->
+                        <div class="mt-6 pt-4 border-t">
+                            <h4 class="font-medium mb-3">Статистика по годам</h4>
+                            <div id="yearsStats" class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                <!-- Статистика будет добавлена динамически -->
+                            </div>
+                        </div>
+
+                        <!-- Перемещение/копирование данных между годами -->
+                        <div class="mt-6 pt-4 border-t">
+                            <h4 class="font-medium mb-3">🔄 Перемещение данных между годами</h4>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <!-- Копировать -->
+                                <div class="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                                    <h5 class="font-medium mb-3 text-blue-800">📋 Копировать данные</h5>
+                                    <p class="text-sm text-gray-600 mb-3">Данные останутся в исходном году и появятся в целевом</p>
+                                    <div class="flex gap-2 mb-3">
+                                        <div class="flex-1">
+                                            <label class="text-xs text-gray-500">Из года</label>
+                                            <input type="number" id="copyFromYear" placeholder="2025" class="w-full p-2 border rounded mt-1">
+                                        </div>
+                                        <div class="flex items-end pb-1 text-gray-400">→</div>
+                                        <div class="flex-1">
+                                            <label class="text-xs text-gray-500">В год</label>
+                                            <input type="number" id="copyToYear" placeholder="2026" class="w-full p-2 border rounded mt-1">
+                                        </div>
+                                    </div>
+                                    <div class="mb-3 text-sm">
+                                        <p class="text-gray-600 mb-1">Таблицы:</p>
+                                        <label class="flex items-center gap-2"><input type="checkbox" class="copy-table-check" value="income" checked> Приход</label>
+                                        <label class="flex items-center gap-2"><input type="checkbox" class="copy-table-check" value="expense" checked> Расход</label>
+                                        <label class="flex items-center gap-2"><input type="checkbox" class="copy-table-check" value="payments" checked> Погашения</label>
+                                        <label class="flex items-center gap-2"><input type="checkbox" class="copy-table-check" value="partners" checked> Партнёры</label>
+                                    </div>
+                                    <button onclick="copyYearData()" class="w-full bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
+                                        📋 Копировать
+                                    </button>
+                                </div>
+
+                                <!-- Переместить -->
+                                <div class="bg-orange-50 p-4 rounded-lg border border-orange-200">
+                                    <h5 class="font-medium mb-3 text-orange-800">✂️ Переместить данные</h5>
+                                    <p class="text-sm text-gray-600 mb-3">Данные удалятся из исходного года и перейдут в целевой</p>
+                                    <div class="flex gap-2 mb-3">
+                                        <div class="flex-1">
+                                            <label class="text-xs text-gray-500">Из года</label>
+                                            <input type="number" id="moveFromYear" placeholder="2025" class="w-full p-2 border rounded mt-1">
+                                        </div>
+                                        <div class="flex items-end pb-1 text-gray-400">→</div>
+                                        <div class="flex-1">
+                                            <label class="text-xs text-gray-500">В год</label>
+                                            <input type="number" id="moveToYear" placeholder="2026" class="w-full p-2 border rounded mt-1">
+                                        </div>
+                                    </div>
+                                    <div class="mb-3 text-sm">
+                                        <p class="text-gray-600 mb-1">Таблицы:</p>
+                                        <label class="flex items-center gap-2"><input type="checkbox" class="move-table-check" value="income" checked> Приход</label>
+                                        <label class="flex items-center gap-2"><input type="checkbox" class="move-table-check" value="expense" checked> Расход</label>
+                                        <label class="flex items-center gap-2"><input type="checkbox" class="move-table-check" value="payments" checked> Погашения</label>
+                                        <label class="flex items-center gap-2"><input type="checkbox" class="move-table-check" value="partners" checked> Партнёры</label>
+                                    </div>
+                                    <button onclick="moveYearData()" class="w-full bg-orange-600 text-white px-4 py-2 rounded hover:bg-orange-700">
+                                        ✂️ Переместить
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Резервное копирование -->
+                <div id="backup" class="content-section">
+                    <h1 class="text-3xl font-bold mb-6">💾 Резервное копирование</h1>
+
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+                        <!-- Экспорт JSON -->
+                        <div class="bg-white p-6 rounded-lg shadow">
+                            <h3 class="text-lg font-semibold mb-2">📤 Экспорт данных</h3>
+                            <p class="text-gray-600 mb-4 text-sm">Скачать резервную копию всех данных в формате JSON</p>
+                            <button onclick="exportBackupJSON()"
+                                class="w-full bg-green-600 text-white p-3 rounded hover:bg-green-700">
+                                📥 Скачать JSON
+                            </button>
+                        </div>
+
+                        <!-- Экспорт Excel -->
+                        <div class="bg-white p-6 rounded-lg shadow">
+                            <h3 class="text-lg font-semibold mb-2">📊 Экспорт в Excel</h3>
+                            <p class="text-gray-600 mb-4 text-sm">Экспорт всех данных в Excel таблицы</p>
+                            <button onclick="exportBackupExcel()"
+                                class="w-full bg-blue-600 text-white p-3 rounded hover:bg-blue-700">
+                                📊 Скачать Excel
+                            </button>
+                        </div>
+
+                        <!-- Импорт JSON -->
+                        <div class="bg-white p-6 rounded-lg shadow">
+                            <h3 class="text-lg font-semibold mb-2">📂 Импорт данных</h3>
+                            <p class="text-gray-600 mb-4 text-sm">Восстановить данные из резервной копии JSON</p>
+                            <input type="file" id="importBackupFile" accept=".json"
+                                class="w-full p-2 border rounded mb-3 text-sm">
+                            <button onclick="importBackupJSON()"
+                                class="w-full bg-purple-600 text-white p-3 rounded hover:bg-purple-700">
+                                📂 Импортировать
+                            </button>
+                        </div>
+
+                        <!-- Импорт из старого проекта -->
+                        <div class="bg-white p-6 rounded-lg shadow border-2 border-orange-200">
+                            <h3 class="text-lg font-semibold mb-2">🔄 Импорт из старого проекта</h3>
+                            <p class="text-gray-600 mb-4 text-sm">Загрузить backup из старой версии (IndexedDB формат). Дубликаты автоматически пропускаются.</p>
+                            <input type="file" id="importLegacyFile" accept=".json"
+                                class="w-full p-2 border rounded mb-3 text-sm">
+                            <button onclick="importLegacyBackup()"
+                                class="w-full bg-orange-600 text-white p-3 rounded hover:bg-orange-700">
+                                🔄 Импортировать старый формат
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Экспорт по разделам -->
+                    <div class="bg-white p-6 rounded-lg shadow mb-6">
+                        <h3 class="text-lg font-semibold mb-4">📋 Экспорт разделов в Excel</h3>
+                        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                            <button onclick="exportSectionExcel('income')"
+                                class="bg-green-500 text-white p-3 rounded hover:bg-green-600 text-sm">📥 Приход</button>
+                            <button onclick="exportSectionExcel('expense')"
+                                class="bg-red-500 text-white p-3 rounded hover:bg-red-600 text-sm">📤 Расход</button>
+                            <button onclick="exportSectionExcel('payments')"
+                                class="bg-blue-500 text-white p-3 rounded hover:bg-blue-600 text-sm">💰 Погашения</button>
+                            <button onclick="exportSectionExcel('partners')"
+                                class="bg-orange-500 text-white p-3 rounded hover:bg-orange-600 text-sm">🤝 Партнеры</button>
+                        </div>
+                    </div>
+
+                    <!-- Очистка таблиц -->
+                    <div class="bg-white p-6 rounded-lg shadow mb-6 border-2 border-red-200">
+                        <h3 class="text-lg font-semibold mb-2 text-red-700">🗑️ Очистка данных</h3>
+                        <p class="text-gray-500 text-sm mb-4">Удаляет все записи из выбранного раздела. Требует подтверждения паролем. Действие необратимо.</p>
+                        <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
+                            <button onclick="clearTableWithPassword('income')"
+                                class="bg-red-100 text-red-700 border border-red-300 p-3 rounded hover:bg-red-200 text-sm font-medium">
+                                🗑️ Приход
+                            </button>
+                            <button onclick="clearTableWithPassword('expense')"
+                                class="bg-red-100 text-red-700 border border-red-300 p-3 rounded hover:bg-red-200 text-sm font-medium">
+                                🗑️ Расход
+                            </button>
+                            <button onclick="clearTableWithPassword('payments')"
+                                class="bg-red-100 text-red-700 border border-red-300 p-3 rounded hover:bg-red-200 text-sm font-medium">
+                                🗑️ Погашения
+                            </button>
+                            <button onclick="clearTableWithPassword('partners')"
+                                class="bg-red-100 text-red-700 border border-red-300 p-3 rounded hover:bg-red-200 text-sm font-medium">
+                                🗑️ Партнеры
+                            </button>
+                            <button onclick="clearTableWithPassword('management')"
+                                class="bg-red-100 text-red-700 border border-red-300 p-3 rounded hover:bg-red-200 text-sm font-medium">
+                                🗑️ Управление
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Лог операций -->
+                    <div class="bg-white p-6 rounded-lg shadow">
+                        <h3 class="text-lg font-semibold mb-4">📝 Лог операций</h3>
+                        <div id="backupLog" class="bg-gray-50 rounded p-4 min-h-16 text-sm font-mono text-gray-700 max-h-48 overflow-y-auto">
+                            <div class="text-gray-400">Здесь будут отображаться результаты операций...</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Модал подтверждения очистки -->
+                <div id="clearTableModal" class="fixed inset-0 bg-black bg-opacity-60 hidden z-50 flex items-center justify-center p-4">
+                    <div class="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
+                        <h3 class="text-xl font-bold text-red-700 mb-2">⚠️ Подтверждение очистки</h3>
+                        <p id="clearTableModalText" class="text-gray-700 mb-4 text-sm"></p>
+                        <div class="mb-4">
+                            <label class="block text-sm font-medium mb-1">Введите пароль для подтверждения:</label>
+                            <input type="password" id="clearTablePassword"
+                                class="w-full p-2 border-2 border-red-300 rounded focus:border-red-500 focus:outline-none"
+                                placeholder="Пароль...">
+                            <div id="clearTableError" class="text-red-600 text-sm mt-1 hidden"></div>
+                        </div>
+                        <div class="flex gap-3">
+                            <button id="clearTableConfirmBtn"
+                                class="flex-1 bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700 font-medium">
+                                Очистить
+                            </button>
+                            <button onclick="closeClearTableModal()"
+                                class="flex-1 bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600">
+                                Отмена
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <!-- Модальное окно для создания накладной -->
+    <div id="invoiceModal" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-lg max-w-4xl w-full max-h-full overflow-auto">
+            <div class="p-6">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-2xl font-bold">Создание расходной накладной</h2>
+                    <button id="closeInvoiceModal" class="text-gray-500 hover:text-gray-700">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                        </svg>
+                    </button>
+                </div>
+
+                <div class="mb-6">
+                    <label for="invoiceClient" class="block text-sm font-medium mb-2">Выберите клиента</label>
+                    <select id="invoiceClient" class="w-full p-2 border rounded">
+                        <option value="">Выберите клиента</option>
+                    </select>
+                </div>
+
+                <div id="selectedExpensesList" class="mb-6">
+                    <h3 class="text-lg font-semibold mb-4">Выбранные документы</h3>
+                    <div id="selectedExpensesContent" class="space-y-4"></div>
+                </div>
+
+                <div class="flex justify-end space-x-4">
+                    <button id="cancelInvoice" class="px-6 py-2 border border-gray-300 rounded hover:bg-gray-50">Отмена</button>
+                    <button id="printInvoice" class="px-6 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">Печать накладной</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Модальное окно для печати накладной -->
+    <div id="printModal" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-lg max-w-5xl w-full max-h-full overflow-auto">
+            <div class="p-6">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-2xl font-bold">Расходная накладная</h2>
+                    <div class="space-x-2">
+                        <button id="exportInvoiceExcel" class="px-4 py-2 bg-orange-600 text-white rounded hover:bg-orange-700">📊 Экспорт Excel</button>
+                        <button id="printInvoiceBtn" class="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700">🖨️ Печать</button>
+                        <button id="closePrintModal" class="px-4 py-2 border border-gray-300 rounded hover:bg-gray-50">Закрыть</button>
+                    </div>
+                </div>
+
+                <div id="invoiceContent" class="print-content">
+                    <!-- Содержимое накладной будет сгенерировано здесь -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Модальное окно для создания кассового ордера -->
+    <div id="cashOrderModal" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-lg max-w-4xl w-full max-h-full overflow-auto">
+            <div class="p-6">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-2xl font-bold">Создание расходного кассового ордера</h2>
+                    <button id="closeCashOrderModal" class="text-gray-500 hover:text-gray-700">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                        </svg>
+                    </button>
+                </div>
+
+                <div class="mb-6">
+                    <label for="cashOrderClient" class="block text-sm font-medium mb-2">Выберите клиента</label>
+                    <select id="cashOrderClient" class="w-full p-2 border rounded">
+                        <option value="">Выберите клиента</option>
+                    </select>
+                </div>
+
+                <div id="selectedPaymentsList" class="mb-6">
+                    <h3 class="text-lg font-semibold mb-4">Выбранные погашения</h3>
+                    <div id="selectedPaymentsContent" class="space-y-4"></div>
+                </div>
+
+                <div class="flex justify-end space-x-4">
+                    <button id="cancelCashOrder" class="px-6 py-2 border border-gray-300 rounded hover:bg-gray-50">Отмена</button>
+                    <button id="printCashOrder" class="px-6 py-2 bg-green-600 text-white rounded hover:bg-green-700">Печать кассового ордера</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Модальное окно для печати кассового ордера -->
+    <div id="printCashOrderModal" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-lg max-w-5xl w-full max-h-full overflow-auto">
+            <div class="p-6">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-2xl font-bold">Расходный кассовый ордер</h2>
+                    <div class="space-x-2">
+                        <button id="exportCashOrderExcel" class="px-4 py-2 bg-orange-600 text-white rounded hover:bg-orange-700">📊 Экспорт Excel</button>
+                        <button id="printCashOrderBtn" class="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700">🖨️ Печать</button>
+                        <button id="closePrintCashOrderModal" class="px-4 py-2 border border-gray-300 rounded hover:bg-gray-50">Закрыть</button>
+                    </div>
+                </div>
+
+                <div id="cashOrderContent" class="print-content">
+                    <!-- Содержимое кассового ордера будет сгенерировано здесь -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/main.js"></script>
+    <script>
+    // ===== МОБИЛЬНОЕ МЕНЮ =====
+    (function() {
+        const btn     = document.getElementById('mobileMenuBtn');
+        const sidebar = document.getElementById('sidebar');
+        const overlay = document.getElementById('mobileOverlay');
+
+        function openMenu() {
+            sidebar.classList.add('open');
+            overlay.classList.remove('hidden');
+            document.body.style.overflow = 'hidden';
+        }
+        function closeMenu() {
+            sidebar.classList.remove('open');
+            overlay.classList.add('hidden');
+            document.body.style.overflow = '';
+        }
+
+        if (btn)     btn.addEventListener('click', openMenu);
+        if (overlay) overlay.addEventListener('click', closeMenu);
+
+        // Закрываем меню при выборе пункта на мобильных
+        document.querySelectorAll('.menu-item').forEach(item => {
+            item.addEventListener('click', () => {
+                if (window.innerWidth < 768) closeMenu();
+            });
+        });
+    })();
+    </script>
+</body>
+</html>

@@ -166,12 +166,16 @@ app.get('/icons/:file', (req, res) => {
     res.sendFile(path.join(publicPath, 'icons', req.params.file));
 });
 
-// SPA fallback — все остальные GET запросы отдают index.html
+// SPA fallback
 app.get('*', (req, res) => {
-    const indexPath = path.join(frontendPath, 'index.html');
     const fs = require('fs');
-    if (fs.existsSync(indexPath)) {
-        res.sendFile(indexPath);
+    // Сначала пробуем public (Railway)
+    const publicIndex = path.join(publicPath, 'index.html');
+    const frontendIndex = path.join(frontendPath, 'index.html');
+    if (fs.existsSync(publicIndex)) {
+        res.sendFile(publicIndex);
+    } else if (fs.existsSync(frontendIndex)) {
+        res.sendFile(frontendIndex);
     } else {
         res.status(404).json({ error: 'Маршрут не найден' });
     }
