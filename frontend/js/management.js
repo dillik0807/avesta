@@ -1202,3 +1202,83 @@ window.initUsersSection = async function() {
         }
     }, 200);
 };
+
+// ========================================
+// 📅 ФУНКЦИИ УПРАВЛЕНИЯ ГОДАМИ
+// ========================================
+
+window.addNewYearFromInterface = async function() {
+    const year = parseInt(document.getElementById('newYearInput').value);
+    if (!year || year < 2020 || year > 2050) {
+        alert('Введите корректный год (2020-2050)');
+        return;
+    }
+    if (!confirm(`Создать новый год ${year}?`)) return;
+
+    try {
+        // Год создаётся автоматически при добавлении первой записи
+        // Просто переключаемся на него
+        if (window.currentYear !== undefined) {
+            window.currentYear = year;
+        }
+        const yearSelect = document.getElementById('yearSelect');
+        if (yearSelect) {
+            // Добавляем опцию если нет
+            let opt = yearSelect.querySelector(`option[value="${year}"]`);
+            if (!opt) {
+                opt = document.createElement('option');
+                opt.value = year;
+                opt.textContent = year;
+                yearSelect.appendChild(opt);
+            }
+            yearSelect.value = year;
+            yearSelect.dispatchEvent(new Event('change'));
+        }
+        alert(`✅ Год ${year} добавлен. Теперь вы работаете в ${year} году.`);
+        document.getElementById('newYearInput').value = '';
+        if (typeof window.updateYearsList === 'function') window.updateYearsList();
+    } catch (error) {
+        alert('Ошибка: ' + error.message);
+    }
+};
+
+window.copyYearData = async function() {
+    const fromYear = parseInt(document.getElementById('copyFromYear').value);
+    const toYear = parseInt(document.getElementById('copyToYear').value);
+    const tables = Array.from(document.querySelectorAll('.copy-table-check:checked')).map(cb => cb.value);
+
+    if (!fromYear || !toYear) { alert('Укажите оба года'); return; }
+    if (fromYear === toYear) { alert('Годы не должны совпадать'); return; }
+    if (tables.length === 0) { alert('Выберите хотя бы одну таблицу'); return; }
+    if (!confirm(`Копировать данные из ${fromYear} в ${toYear}?\nТаблицы: ${tables.join(', ')}`)) return;
+
+    try {
+        const result = await window.api.copyYearData(fromYear, toYear, tables);
+        const counts = Object.entries(result.copied).map(([t, c]) => `${t}: ${c}`).join(', ');
+        alert(`✅ Скопировано: ${counts}`);
+        if (typeof window.updateYearsList === 'function') window.updateYearsList();
+    } catch (error) {
+        alert('Ошибка: ' + error.message);
+    }
+};
+
+window.moveYearData = async function() {
+    const fromYear = parseInt(document.getElementById('moveFromYear').value);
+    const toYear = parseInt(document.getElementById('moveToYear').value);
+    const tables = Array.from(document.querySelectorAll('.move-table-check:checked')).map(cb => cb.value);
+
+    if (!fromYear || !toYear) { alert('Укажите оба года'); return; }
+    if (fromYear === toYear) { alert('Годы не должны совпадать'); return; }
+    if (tables.length === 0) { alert('Выберите хотя бы одну таблицу'); return; }
+    if (!confirm(`⚠️ ПЕРЕМЕСТИТЬ данные из ${fromYear} в ${toYear}?\nДанные удалятся из ${fromYear}!\nТаблицы: ${tables.join(', ')}`)) return;
+
+    try {
+        const result = await window.api.moveYearData(fromYear, toYear, tables);
+        const counts = Object.entries(result.moved).map(([t, c]) => `${t}: ${c}`).join(', ');
+        alert(`✅ Перемещено: ${counts}`);
+        if (typeof window.updateYearsList === 'function') window.updateYearsList();
+        if (typeof window.loadData === 'function') window.loadData();
+    } catch (error) {
+        alert('Ошибка: ' + error.message);
+    }
+};
