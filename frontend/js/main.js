@@ -1351,7 +1351,7 @@ function exportDailyReportNewExcel() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `Отчет_за_день_${selectedDate}.xls`;
+    a.download = `Отчет_за_день_${selectedDate}.xlsx`;
     a.click();
     URL.revokeObjectURL(url);
 }
