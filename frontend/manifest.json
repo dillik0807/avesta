@@ -1,11 +1,11 @@
 {
-  "name": "Avesta 2026",
-  "short_name": "Avesta",
-  "description": "Система учёта товаров Avesta 2026",
+  "name": "AZOD - Система учёта",
+  "short_name": "AZOD",
+  "description": "AZOD - Система учёта товаров",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#1e40af",
-  "theme_color": "#1e40af",
+  "background_color": "#000000",
+  "theme_color": "#000000",
   "orientation": "portrait-primary",
   "lang": "ru",
   "icons": [
