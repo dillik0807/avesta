@@ -150,9 +150,26 @@ app.get('/health', (req, res) => {
     res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
-// 404 handler
-app.use((req, res) => {
-    res.status(404).json({ error: 'Маршрут не найден' });
+// Явные роуты для PWA файлов
+app.get('/manifest.json', (req, res) => {
+    res.sendFile(path.join(frontendPath, 'manifest.json'));
+});
+app.get('/sw.js', (req, res) => {
+    res.sendFile(path.join(frontendPath, 'sw.js'));
+});
+app.get('/icons/:file', (req, res) => {
+    res.sendFile(path.join(frontendPath, 'icons', req.params.file));
+});
+
+// SPA fallback — все остальные GET запросы отдают index.html
+app.get('*', (req, res) => {
+    const indexPath = path.join(frontendPath, 'index.html');
+    const fs = require('fs');
+    if (fs.existsSync(indexPath)) {
+        res.sendFile(indexPath);
+    } else {
+        res.status(404).json({ error: 'Маршрут не найден' });
+    }
 });
 
 // Error handler
