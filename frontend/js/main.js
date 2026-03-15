@@ -277,8 +277,8 @@ function showPasswordChangeDialog() {
                 username: window.currentUser.username,
                 password: newPassword,
                 role: window.currentUser.role,
-                warehouse_group: window.currentUser.warehouse_group,
-                require_password_change: false,  // Сбрасываем флаг
+                warehouse_group: window.currentUser.warehouseGroup || window.currentUser.warehouse_group,
+                require_password_change: false,
                 is_blocked: window.currentUser.is_blocked
             });
             

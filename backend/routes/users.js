@@ -74,10 +74,16 @@ router.put('/:id', async (req, res) => {
         return res.status(400).json({ error: 'Заполните все обязательные поля' });
     }
     
-    // Сериализуем warehouse_group если это массив
-    const wg = Array.isArray(warehouse_group)
-        ? JSON.stringify(warehouse_group)
-        : (warehouse_group || null);
+    // Сериализуем warehouse_group — если не передан, берём из БД
+    let wg;
+    if (warehouse_group === undefined) {
+        const current = await pool.query('SELECT warehouse_group FROM users WHERE id = $1', [id]);
+        wg = current.rows[0]?.warehouse_group ?? null;
+    } else {
+        wg = Array.isArray(warehouse_group)
+            ? JSON.stringify(warehouse_group)
+            : (warehouse_group || null);
+    }
     
     try {
         // Проверяем, существует ли другой пользователь с таким логином
