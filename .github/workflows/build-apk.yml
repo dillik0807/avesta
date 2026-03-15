@@ -23,12 +23,17 @@ jobs:
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
 
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v3
+        with:
+          gradle-version: '8.4'
+
       - name: Make gradlew executable
         run: chmod +x gradlew
         working-directory: postgres-version/android-app
 
       - name: Build APK
-        run: ./gradlew assembleRelease
+        run: gradle assembleRelease
         working-directory: postgres-version/android-app
 
       - name: Upload APK
