@@ -452,67 +452,64 @@ window.exportDailyReportToExcel = function() {
         alert('Сначала сформируйте отчет');
         return;
     }
-    
-    const wb = XLSX.utils.book_new();
-    
-    // Рассчитываем сводку
-    const incomeOperations = currentDailyReportData.income.length;
-    const expenseOperations = currentDailyReportData.expense.length;
-    const totalExpenseSum = currentDailyReportData.expense.reduce((sum, item) => sum + parseFloat(item.total || 0), 0);
-    const totalIncomeWeight = currentDailyReportData.income.reduce((sum, item) => sum + parseFloat(item.weight_tons || 0), 0);
-    
-    // Лист сводки
-    const summaryData = [
-        ['📊 СВОДКА ЗА ДЕНЬ', ''],
-        ['', ''],
-        ['Операций прихода:', incomeOperations],
-        ['Операций расхода:', expenseOperations],
-        ['Общая сумма расхода ($):', totalExpenseSum],
-        ['Общий вес прихода (тонн):', totalIncomeWeight]
-    ];
-    const wsSummary = XLSX.utils.aoa_to_sheet(summaryData);
-    XLSX.utils.book_append_sheet(wb, wsSummary, 'Сводка');
-    
-    // Лист приходов
-    if (currentDailyReportData.income.length > 0) {
-        const incomeData = currentDailyReportData.income.map(item => ({
-            'Дата': fmtDate(item.date),
-            'Вагон': item.wagon || '',
-            'Фирма': item.company || '',
-            'Склад': item.warehouse || '',
-            'Товар': item.product || '',
-            'По док': parseFloat(item.qty_doc || 0),
-            'Факт': parseFloat(item.qty_fact || 0),
-            'Разница': parseFloat(item.qty_fact || 0) - parseFloat(item.qty_doc || 0),
-            'Тонн': parseFloat(item.weight_tons || 0)
-        }));
-        
-        const wsIncome = jsonToSheetWithTextDate(incomeData);
-        XLSX.utils.book_append_sheet(wb, wsIncome, 'Приходы');
-    }
-    
-    // Лист расходов
-    if (currentDailyReportData.expense.length > 0) {
-        const expenseData = currentDailyReportData.expense.map(item => ({
-            'Дата': fmtDate(item.date),
-            'Фирма': item.company || '',
-            'Склад': item.warehouse || '',
-            'Товар': item.product || '',
-            'Клиент': item.client || '',
-            'Количество': parseFloat(item.quantity || 0),
-            'Тонн': parseFloat(item.tons || 0),
-            'Цена': parseFloat(item.price || 0),
-            'Сумма': parseFloat(item.total || 0),
-            'Примечания': item.notes || '',
-            'Пользователь': item.user || ''
-        }));
-        
-        const wsExpense = jsonToSheetWithTextDate(expenseData);
-        XLSX.utils.book_append_sheet(wb, wsExpense, 'Расходы');
-    }
-    
+
     const selectedDate = document.getElementById('dailyReportDate')?.value || localDateStr();
     const username = window.currentUser?.username || 'user';
+    const wb = XLSX.utils.book_new();
+    const rows = [];
+
+    // Заголовок
+    rows.push([`Отчет за день: ${selectedDate}`]);
+    rows.push([]);
+
+    // ПРИХОД
+    rows.push(['Приход товаров']);
+    rows.push([]);
+    rows.push(['Дата','Вагон','Фирма','Склад','Товар','По документу','По факту','Разница','Вес (тонн)','Примечания','Пользователь']);
+
+    let tDoc=0, tFact=0, tDiff=0, tWeight=0;
+    currentDailyReportData.income.forEach(i => {
+        const doc=parseFloat(i.qty_doc||0), fact=parseFloat(i.qty_fact||0), diff=fact-doc, wt=parseFloat(i.weight_tons||0);
+        tDoc+=doc; tFact+=fact; tDiff+=diff; tWeight+=wt;
+        rows.push([fmtDate(i.date), i.wagon||'', i.company||'', i.warehouse||'', i.product||'', doc, fact, diff, wt, i.notes||'', i.user||'']);
+    });
+    rows.push(['ИТОГО:','','','','', tDoc, tFact, tDiff, tWeight,'','']);
+    rows.push([]);
+
+    // РАСХОД
+    rows.push(['Расход товаров']);
+    rows.push([]);
+    rows.push(['Дата','Фирма','Склад','Клиент','Товар','Количество','Тонн','Цена','Сумма','Примечания','Пользователь']);
+
+    let tQty=0, tTons=0, tSum=0;
+    currentDailyReportData.expense.forEach(i => {
+        const qty=parseFloat(i.quantity||0), tons=parseFloat(i.tons||0), price=parseFloat(i.price||0), total=parseFloat(i.total||0);
+        tQty+=qty; tTons+=tons; tSum+=total;
+        rows.push([fmtDate(i.date), i.company||'', i.warehouse||'', i.client||'', i.product||'', qty, tons, price, total, i.notes||'', i.user||'']);
+    });
+    rows.push(['ИТОГО:','','','','', tQty, tTons,'', tSum,'','']);
+    rows.push([]);
+
+    // СВОДКА
+    rows.push(['Сводка']);
+    rows.push([]);
+    rows.push(['СВОДКА ЗА ДЕНЬ']);
+    rows.push([]);
+    rows.push(['ПРИХОД']);
+    rows.push(['Операций прихода:', currentDailyReportData.income.length]);
+    rows.push(['По документу (итого):', tDoc]);
+    rows.push(['По факту (итого):', tFact]);
+    rows.push(['Разница (итого):', tDiff]);
+    rows.push(['Вес (тонн):', tWeight]);
+    rows.push([]);
+    rows.push(['РАСХОД']);
+    rows.push(['Операций расхода:', currentDailyReportData.expense.length]);
+    rows.push(['Количество (итого):', tQty]);
+    rows.push(['Тонн (итого):', tTons]);
+    rows.push(['Сумма (итого):', tSum]);
+
+    const ws = XLSX.utils.aoa_to_sheet(rows);
+    XLSX.utils.book_append_sheet(wb, ws, `Отчет за день ${selectedDate}`);
     XLSX.writeFile(wb, `Отчет_за_день_${selectedDate}_${username}.xlsx`);
 };
 
