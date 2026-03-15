@@ -22,6 +22,7 @@ const usersRoutes = require('./routes/users');
 const pricesRoutes = require('./routes/prices');
 const settingsRoutes = require('./routes/settings');
 const backupRoutes = require('./routes/backup');
+const yearsRoutes = require('./routes/years');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -64,6 +65,7 @@ app.use('/api/users', usersRoutes);
 app.use('/api/prices', pricesRoutes);
 app.use('/api/settings', settingsRoutes);
 app.use('/api/backup', backupRoutes);
+app.use('/api/years', yearsRoutes);
 
 // Health check
 app.get('/health', (req, res) => {
