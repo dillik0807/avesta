@@ -5,15 +5,12 @@
 class API {
     constructor() {
         // Определяем базовый URL API
-        if (window.location.protocol === 'file:') {
-            // Если открыто через file://, используем localhost:3001
-            this.baseURL = 'http://localhost:3001';
-        } else if (window.location.port === '8080') {
-            // Если открыто через фронтенд сервер на 8080, API на 3001
+        if (window.location.protocol === 'file:' || window.location.hostname === 'localhost') {
+            // Локальная разработка
             this.baseURL = 'http://localhost:3001';
         } else {
-            // Иначе используем текущий origin (для продакшена)
-            this.baseURL = window.location.origin;
+            // Продакшен — Railway
+            this.baseURL = 'https://avesta-production.up.railway.app';
         }
         
         this.token = localStorage.getItem('authToken');
