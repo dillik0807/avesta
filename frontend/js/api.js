@@ -8,7 +8,9 @@ class API {
         // Всегда используем Railway бэкенд
         this.baseURL = 'https://avesta-production.up.railway.app';
         
-        this.token = localStorage.getItem('authToken');
+        // Всегда требуем логин при открытии страницы
+        localStorage.removeItem('authToken');
+        this.token = null;
         
         console.log('🌐 API Base URL:', this.baseURL);
     }
