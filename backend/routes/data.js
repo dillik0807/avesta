@@ -96,42 +96,59 @@ router.get('/:year', authenticateToken, async (req, res) => {
 
         const [income, expense, payments, partners, companies, warehouses, products, clients, coalitions] = await Promise.all([
             db.query(`
-                SELECT i.*, TO_CHAR(i.date, 'YYYY-MM-DD') as date, c.name as company, w.name as warehouse, p.name as product, u.username as user
+                SELECT i.*, TO_CHAR(i.date, 'YYYY-MM-DD') as date, c.name as company, w.name as warehouse, p.name as product,
+                    u.username as user,
+                    CASE WHEN eu.username IS NOT NULL AND eu.username != u.username
+                         THEN u.username || ' : ' || eu.username
+                         ELSE u.username END as user
                 FROM income i
                 LEFT JOIN companies c ON i.company_id = c.id
                 LEFT JOIN warehouses w ON i.warehouse_id = w.id
                 LEFT JOIN products p ON i.product_id = p.id
                 LEFT JOIN users u ON i.user_id = u.id
+                LEFT JOIN users eu ON i.edited_by = eu.id
                 WHERE i.year = $1 AND i.deleted = false ${warehouseFilter}
                 ORDER BY i.date DESC, i.id DESC
             `, [year, ...extraParams]),
 
             db.query(`
-                SELECT e.*, TO_CHAR(e.date, 'YYYY-MM-DD') as date, c.name as company, w.name as warehouse, p.name as product, cl.name as client, u.username as user
+                SELECT e.*, TO_CHAR(e.date, 'YYYY-MM-DD') as date, c.name as company, w.name as warehouse, p.name as product, cl.name as client,
+                    CASE WHEN eu.username IS NOT NULL AND eu.username != u.username
+                         THEN u.username || ' : ' || eu.username
+                         ELSE u.username END as user
                 FROM expense e
                 LEFT JOIN companies c ON e.company_id = c.id
                 LEFT JOIN warehouses w ON e.warehouse_id = w.id
                 LEFT JOIN products p ON e.product_id = p.id
                 LEFT JOIN clients cl ON e.client_id = cl.id
                 LEFT JOIN users u ON e.user_id = u.id
+                LEFT JOIN users eu ON e.edited_by = eu.id
                 WHERE e.year = $1 AND e.deleted = false ${warehouseFilter}
                 ORDER BY e.date DESC, e.id DESC
             `, [year, ...extraParams]),
 
             db.query(`
-                SELECT p.*, TO_CHAR(p.date, 'YYYY-MM-DD') as date, cl.name as client, u.username as user
+                SELECT p.*, TO_CHAR(p.date, 'YYYY-MM-DD') as date, cl.name as client,
+                    CASE WHEN eu.username IS NOT NULL AND eu.username != u.username
+                         THEN u.username || ' : ' || eu.username
+                         ELSE u.username END as user
                 FROM payments p
                 LEFT JOIN clients cl ON p.client_id = cl.id
                 LEFT JOIN users u ON p.user_id = u.id
+                LEFT JOIN users eu ON p.edited_by = eu.id
                 WHERE p.year = $1 AND p.deleted = false
                 ORDER BY p.date DESC, p.id DESC
             `, [year]),
 
             db.query(`
-                SELECT p.*, TO_CHAR(p.date, 'YYYY-MM-DD') as date, cl.name as client, u.username as user
+                SELECT p.*, TO_CHAR(p.date, 'YYYY-MM-DD') as date, cl.name as client,
+                    CASE WHEN eu.username IS NOT NULL AND eu.username != u.username
+                         THEN u.username || ' : ' || eu.username
+                         ELSE u.username END as user
                 FROM partners p
                 LEFT JOIN clients cl ON p.client_id = cl.id
                 LEFT JOIN users u ON p.user_id = u.id
+                LEFT JOIN users eu ON p.edited_by = eu.id
                 WHERE p.year = $1 AND p.deleted = false
                 ORDER BY p.date DESC, p.id DESC
             `, [year]),
