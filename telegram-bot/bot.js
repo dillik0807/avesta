@@ -133,14 +133,10 @@ const formatNumber = (num) => {
 
 const escMd = (text) => {
     if (!text) return '';
+    // Экранируем только символы важные для Markdown (не V2)
     return text.toString()
-        .replace(/\\/g,'\\\\').replace(/\*/g,'\\*').replace(/_/g,'\\_')
-        .replace(/\[/g,'\\[').replace(/\]/g,'\\]').replace(/\(/g,'\\(')
-        .replace(/\)/g,'\\)').replace(/~/g,'\\~').replace(/`/g,'\\`')
-        .replace(/>/g,'\\>').replace(/#/g,'\\#').replace(/\+/g,'\\+')
-        .replace(/-/g,'\\-').replace(/=/g,'\\=').replace(/\|/g,'\\|')
-        .replace(/\{/g,'\\{').replace(/\}/g,'\\}').replace(/\./g,'\\.')
-        .replace(/!/g,'\\!');
+        .replace(/\*/g,'\\*').replace(/_/g,'\\_')
+        .replace(/\[/g,'\\[').replace(/`/g,'\\`');
 };
 
 const sendMd = async (ctx, text, extra = {}) => {
