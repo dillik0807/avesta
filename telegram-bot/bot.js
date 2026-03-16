@@ -1159,7 +1159,7 @@ bot.action(/^exnotify_(\d+)$/, async (ctx) => {
 });
 
 // ─── Топ должников ────────────────────────────────────────────────────────────
-bot.hears(/👥|топ должников/i, async (ctx) => {
+bot.hears(/^👥 Топ должников$|^топ должников$/i, async (ctx) => {
     const userId = ctx.from.id;
     await ctx.reply('⏳ Загрузка...');
     try {
@@ -1406,7 +1406,7 @@ const sendClientPage = async (ctx, userId, page, edit = false) => {
     else await ctx.reply(text, opts);
 };
 
-bot.hears(/👤|карточка клиента/i, async (ctx) => {
+bot.hears(/^👤 Карточка клиента$|^карточка клиента$/i, async (ctx) => {
     const userId = ctx.from.id;
     await ctx.reply('⏳ Загрузка списка клиентов...');
     try {
@@ -1526,7 +1526,7 @@ bot.hears(/⚙️|управление/i, async (ctx) => {
     ctx.reply('⚙️ *УПРАВЛЕНИЕ*\n\nВыберите раздел:', { parse_mode:'Markdown', ...managementKeyboard });
 });
 
-bot.hears(/👥 Пользователи/i, async (ctx) => {
+bot.hears(/^👥 Пользователи$/, async (ctx) => {
     const userId = ctx.from.id;
     if (!isAdmin(userId)) return ctx.reply('⛔ Доступ запрещён!');
     await ctx.reply('⏳ Загрузка...');
@@ -1534,12 +1534,14 @@ bot.hears(/👥 Пользователи/i, async (ctx) => {
         const { token } = getSession(userId);
         const users = await apiGet('/api/users', token);
         let msg = `👥 *ПОЛЬЗОВАТЕЛИ*\n${'═'.repeat(25)}\n\n`;
-        users.forEach((u,i) => {
-            const status = u.is_blocked ? '🔒' : '✅';
-            msg += `${i+1}. ${status} *${escMd(u.username)}*\n   ${getRoleText(u.role)}\n`;
+        if (!users.length) { msg += '_Список пуст_\n'; }
+        else users.forEach((u, i) => {
+            const status = u.is_blocked ? '🔒 Заблокирован' : '✅ Активен';
+            msg += `${i+1}. *${escMd(u.username)}*\n`;
+            msg += `   ${getRoleText(u.role)} | ${status}\n`;
             let wg = u.warehouse_group;
             if (typeof wg === 'string') { try { wg = JSON.parse(wg); } catch {} }
-            if (Array.isArray(wg) && wg.length && wg[0]) msg += `   🏪 Группы: ${wg.join(', ')}\n`;
+            if (Array.isArray(wg) && wg.length && wg[0]) msg += `   🏪 Группы: ${escMd(wg.join(', '))}\n`;
             msg += '\n';
         });
         msg += `${'═'.repeat(25)}\n📊 Всего: *${users.length}* пользователей`;
@@ -1614,7 +1616,7 @@ bot.hears(/🏪 Склады/i, async (ctx) => {
     } catch (e) { ctx.reply(`❌ Ошибка: ${e.message}`); }
 });
 
-bot.hears(/👤 Клиенты/i, async (ctx) => {
+bot.hears(/^👤 Клиенты$/, async (ctx) => {
     const userId = ctx.from.id;
     if (!isAdmin(userId)) return ctx.reply('⛔ Доступ запрещён!');
     await ctx.reply('⏳ Загрузка...');
