@@ -1079,7 +1079,7 @@ bot.action(/^notify_(\d+)$/, async (ctx) => {
     const daysAgo = parseInt(ctx.match[1]);
     await ctx.answerCbQuery('⏳ Поиск должников...');
     try {
-        const data = await getData(userId);
+        const data = await getDataAll(userId);
         const targetDate = new Date();
         targetDate.setDate(targetDate.getDate() - daysAgo);
         const targetDateStr = targetDate.toISOString().split('T')[0];
@@ -1163,7 +1163,7 @@ bot.hears(/👥|топ должников/i, async (ctx) => {
     const userId = ctx.from.id;
     await ctx.reply('⏳ Загрузка...');
     try {
-        const data = await getData(userId);
+        const data = await getDataAll(userId);
         const debts = calcDebts(data);
         const top = Object.entries(debts).sort((a,b) => b[1].debt - a[1].debt).slice(0,10);
         if (!top.length) return ctx.reply('✅ Должников нет!');
