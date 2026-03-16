@@ -541,7 +541,7 @@ bot.hears('💰 Долги клиентов', async (ctx) => {
     const userId = ctx.from.id;
     await ctx.reply('⏳ Загрузка...');
     try {
-        const data = await getData(userId);
+        const data = await getDataAll(userId);
         const debts = calcDebts(data);
         if (!Object.keys(debts).length) return ctx.reply('✅ Долгов нет!');
         const sorted = Object.entries(debts).sort((a,b) => b[1].debt - a[1].debt);
@@ -1410,7 +1410,7 @@ bot.hears(/👤|карточка клиента/i, async (ctx) => {
     const userId = ctx.from.id;
     await ctx.reply('⏳ Загрузка списка клиентов...');
     try {
-        const data = await getData(userId);
+        const data = await getDataAll(userId);
 
         let clientNames = (data.clients||[])
             .filter(c => c && !c.is_deleted)
@@ -1446,7 +1446,7 @@ bot.action(/^cl_(\d+)$/, async (ctx) => {
     if (!clientName) return ctx.answerCbQuery('❌ Клиент не найден');
     await ctx.answerCbQuery('⏳ Загрузка карточки...');
     try {
-        const data = await getData(userId);
+        const data = await getDataAll(userId);
         const card = calcClientCard(data, clientName);
 
         let msg = `👤 *КАРТОЧКА КЛИЕНТА*\n`;
