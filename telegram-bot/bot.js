@@ -9,24 +9,75 @@ const fetch = require('node-fetch');
 const fs = require('fs');
 const ExcelJS = require('exceljs');
 
+const { Pool } = require('pg');
+
 const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const API_URL = (process.env.API_URL || 'http://localhost:3000').replace(/\/$/, '');
 const DEFAULT_YEAR = process.env.DEFAULT_YEAR || '2026';
-const SESSIONS_FILE = './sessions.json';
 
 if (!BOT_TOKEN) {
     console.error('❌ TELEGRAM_BOT_TOKEN не указан!');
     process.exit(1);
 }
 
-// ─── Сессии ──────────────────────────────────────────────────────────────────
-let sessions = {};
-try {
-    if (fs.existsSync(SESSIONS_FILE)) sessions = JSON.parse(fs.readFileSync(SESSIONS_FILE, 'utf8'));
-} catch (e) { sessions = {}; }
+// ─── PostgreSQL для сессий ────────────────────────────────────────────────────
+const pool = process.env.DATABASE_URL ? new Pool({
+    connectionString: process.env.DATABASE_URL,
+    ssl: { rejectUnauthorized: false }
+}) : null;
 
-const saveSessions = () => {
-    try { fs.writeFileSync(SESSIONS_FILE, JSON.stringify(sessions, null, 2)); } catch (e) {}
+// Создаём таблицу сессий если нет
+async function initSessionsTable() {
+    if (!pool) return;
+    try {
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS bot_sessions (
+                user_id BIGINT PRIMARY KEY,
+                data JSONB NOT NULL DEFAULT '{}',
+                updated_at TIMESTAMP DEFAULT NOW()
+            )
+        `);
+        console.log('✅ Таблица bot_sessions готова');
+    } catch (e) {
+        console.error('❌ Ошибка создания таблицы сессий:', e.message);
+    }
+}
+
+// ─── Сессии (в памяти + PostgreSQL) ──────────────────────────────────────────
+let sessions = {};
+
+// Загрузка всех сессий из БД при старте
+async function loadSessionsFromDB() {
+    if (!pool) return;
+    try {
+        const res = await pool.query('SELECT user_id, data FROM bot_sessions');
+        res.rows.forEach(row => { sessions[row.user_id] = row.data; });
+        console.log(`✅ Загружено ${res.rows.length} сессий из БД`);
+    } catch (e) {
+        console.error('❌ Ошибка загрузки сессий:', e.message);
+    }
+}
+
+// Сохранение одной сессии в БД
+const saveSessions = (userId) => {
+    if (!pool) return;
+    if (userId) {
+        const data = sessions[userId] || {};
+        pool.query(
+            `INSERT INTO bot_sessions (user_id, data, updated_at) VALUES ($1, $2, NOW())
+             ON CONFLICT (user_id) DO UPDATE SET data = $2, updated_at = NOW()`,
+            [userId, JSON.stringify(data)]
+        ).catch(e => console.error('❌ Ошибка сохранения сессии:', e.message));
+    } else {
+        // Сохраняем все сессии (для обратной совместимости)
+        Object.keys(sessions).forEach(uid => {
+            pool.query(
+                `INSERT INTO bot_sessions (user_id, data, updated_at) VALUES ($1, $2, NOW())
+                 ON CONFLICT (user_id) DO UPDATE SET data = $2, updated_at = NOW()`,
+                [uid, JSON.stringify(sessions[uid])]
+            ).catch(e => console.error('❌ Ошибка сохранения сессии:', e.message));
+        });
+    }
 };
 
 const isAuthorized = (userId) => sessions[userId]?.authorized && sessions[userId]?.token;
@@ -1818,6 +1869,10 @@ console.log('🔄 Подключение к Telegram API...');
 
 (async () => {
     try {
+        // Инициализируем таблицу сессий и загружаем сессии из БД
+        await initSessionsTable();
+        await loadSessionsFromDB();
+
         const botInfo = await bot.telegram.getMe();
         console.log(`✅ Бот подключен: @${botInfo.username}`);
         await bot.telegram.deleteWebhook({ drop_pending_updates: true });
