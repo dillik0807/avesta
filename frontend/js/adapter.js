@@ -76,6 +76,16 @@ window.loadData = async function() {
         window.appData.clients = data.clients || [];
         window.appData.coalitions = data.coalitions || [];
         
+        // Загружаем цены (нужны для автозаполнения в расходе)
+        try {
+            const prices = await window.api.getPrices();
+            window.appData.prices = prices || [];
+            console.log('💰 Цены загружены:', window.appData.prices.length);
+        } catch(e) {
+            console.warn('⚠️ Не удалось загрузить цены:', e.message);
+            if (!window.appData.prices) window.appData.prices = [];
+        }
+        
         console.log('✅ Данные загружены:', {
             companies: window.appData.companies.length,
             warehouses: window.appData.warehouses.length,

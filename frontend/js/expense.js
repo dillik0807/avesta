@@ -77,9 +77,16 @@ document.addEventListener('DOMContentLoaded', () => {
     if (expenseWarehouse) {
         expenseWarehouse.addEventListener('change', filterExpenseProducts);
         expenseWarehouse.addEventListener('input', filterExpenseProducts);
+        // При смене склада пересчитываем цену если товар уже выбран
+        expenseWarehouse.addEventListener('change', autofillProductPrice);
+        expenseWarehouse.addEventListener('blur', autofillProductPrice);
     }
     if (expenseProduct) {
-        // Используем blur для срабатывания после выбора из datalist
+        // datalist: используем input + blur + change для надёжного срабатывания
+        expenseProduct.addEventListener('input', () => {
+            // Небольшая задержка — datalist заполняет поле не сразу
+            setTimeout(autofillProductPrice, 100);
+        });
         expenseProduct.addEventListener('blur', autofillProductPrice);
         expenseProduct.addEventListener('change', autofillProductPrice);
     }
@@ -244,23 +251,25 @@ function filterExpenseProducts() {
 }
 
 // Автозаполнение цены при выборе товара
-function autofillProductPrice() {
+async function autofillProductPrice() {
     const selectedProduct = document.getElementById('expenseProduct').value.trim();
     const selectedWarehouse = document.getElementById('expenseWarehouse').value.trim();
     const priceInput = document.getElementById('expensePrice');
     
-    console.log('🔍 Автозаполнение цены для товара:', selectedProduct, 'склад:', selectedWarehouse);
+    if (!selectedProduct || !priceInput) return;
     
-    if (!selectedProduct || !priceInput) {
-        console.log('⚠️ Товар не выбран или поле цены не найдено');
-        return;
+    // Если цены не загружены — загружаем сейчас
+    if (!window.appData?.prices || window.appData.prices.length === 0) {
+        try {
+            const prices = await window.api.getPrices();
+            window.appData.prices = prices || [];
+            console.log('💰 Цены загружены при автозаполнении:', window.appData.prices.length);
+        } catch(e) {
+            console.warn('⚠️ Не удалось загрузить цены:', e.message);
+        }
     }
     
-    // Проверяем что данные загружены
-    if (!window.appData?.products) {
-        console.warn('⚠️ Справочник товаров не загружен');
-        return;
-    }
+    if (!window.appData?.products) return;
     
     // Находим товар
     const product = window.appData.products.find(p => {
@@ -275,17 +284,29 @@ function autofillProductPrice() {
     
     console.log('✅ Товар найден:', product);
     
-    // Находим склад для определения группы
+    // Определяем группу склада для поиска цены
+    // Приоритет: 1) выбранный склад в форме, 2) группа текущего пользователя (завсклад), 3) ALL
     let warehouseGroup = 'ALL';
+
     if (selectedWarehouse && window.appData?.warehouses) {
+        // Если склад выбран — берём его группу
         const warehouse = window.appData.warehouses.find(w => {
             const name = typeof w === 'string' ? w : w.name;
             return name === selectedWarehouse;
         });
-        
         if (warehouse && typeof warehouse === 'object' && warehouse.warehouse_group) {
             warehouseGroup = warehouse.warehouse_group;
-            console.log('📦 Группа склада:', warehouseGroup);
+            console.log('📦 Группа из выбранного склада:', warehouseGroup);
+        }
+    } else {
+        // Склад не выбран — берём группу текущего пользователя
+        const userGroup = window.currentUser?.warehouseGroup;
+        if (userGroup) {
+            const groups = Array.isArray(userGroup) ? userGroup : [userGroup];
+            if (groups.length > 0 && groups[0]) {
+                warehouseGroup = groups[0]; // берём первую группу пользователя
+                console.log('📦 Группа из пользователя:', warehouseGroup);
+            }
         }
     }
     
@@ -293,33 +314,48 @@ function autofillProductPrice() {
     let price = null;
     
     if (window.appData?.prices && window.appData.prices.length > 0) {
+        // Фильтруем цены для данного товара (== для совместимости числа/строки)
+        const productPrices = window.appData.prices.filter(p => p.product_id == product.id);
+        
+        // Сортируем по дате — новые первые
+        productPrices.sort((a, b) => new Date(b.effective_date) - new Date(a.effective_date));
+        
+        console.log(`💰 Все цены для товара "${selectedProduct}" (id=${product.id}):`, 
+            productPrices.map(p => `${p.warehouse_group}=${p.price} (${p.effective_date})`));
+        
         // Сначала ищем цену для конкретной группы склада
-        const specificPrice = window.appData.prices.find(p => 
-            p.product_id === product.id && 
-            p.warehouse_group === warehouseGroup
-        );
+        const specificPrice = productPrices.find(p => p.warehouse_group === warehouseGroup);
         
         if (specificPrice) {
             price = specificPrice.price;
-            console.log(`💰 Найдена цена для группы ${warehouseGroup}: ${price}`);
-        } else {
-            // Если не найдена, ищем цену для всех складов
-            const generalPrice = window.appData.prices.find(p => 
-                p.product_id === product.id && 
-                p.warehouse_group === 'ALL'
-            );
-            
+            console.log(`✅ Цена для группы "${warehouseGroup}": ${price}`);
+        } else if (warehouseGroup !== 'ALL') {
+            // Если нет цены для группы — берём ALL
+            const generalPrice = productPrices.find(p => p.warehouse_group === 'ALL');
             if (generalPrice) {
                 price = generalPrice.price;
-                console.log(`💰 Найдена общая цена: ${price}`);
+                console.log(`✅ Общая цена (ALL): ${price}`);
+            } else {
+                console.warn(`⚠️ Нет цены ни для группы "${warehouseGroup}", ни для ALL`);
+            }
+        } else {
+            // warehouseGroup === 'ALL' и не нашли — берём первую попавшуюся
+            if (productPrices.length > 0) {
+                price = productPrices[0].price;
+                console.log(`✅ Первая доступная цена: ${price}`);
             }
         }
+    } else {
+        console.warn('⚠️ appData.prices пустой или не загружен');
     }
     
-    // Если цена не найдена в истории, используем цену из товара
+    // Fallback: только если цены вообще нет в product_prices — берём из товара (это ALL цена)
     if (!price && product.price && product.price > 0) {
-        price = product.price;
-        console.log(`💰 Используем цену из товара: ${price}`);
+        // Используем только если склад не выбран или группа не определена
+        if (warehouseGroup === 'ALL') {
+            price = product.price;
+            console.log(`💰 Fallback цена из товара: ${price}`);
+        }
     }
     
     if (price && price > 0) {

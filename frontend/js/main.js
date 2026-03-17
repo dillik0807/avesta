@@ -277,8 +277,8 @@ function showPasswordChangeDialog() {
                 username: window.currentUser.username,
                 password: newPassword,
                 role: window.currentUser.role,
-                warehouse_group: window.currentUser.warehouseGroup || window.currentUser.warehouse_group,
-                require_password_change: false,
+                warehouse_group: window.currentUser.warehouse_group,
+                require_password_change: false,  // Сбрасываем флаг
                 is_blocked: window.currentUser.is_blocked
             });
             
@@ -1332,19 +1332,28 @@ function exportDailyReportNewExcel() {
         ['Сумма (итого):', tSum.toFixed(2)],
     ];
 
-    // Настоящий XLSX через библиотеку
-    const wb = XLSX.utils.book_new();
+    const toSummary = (rows) => {
+        let t = '<table><tbody>';
+        rows.forEach(row => {
+            t += '<tr>' + row.map((c, i) => `<td style="padding:3px 12px 3px 0;${i===0?'font-weight:bold':''}">${c}</td>`).join('') + '</tr>';
+        });
+        return t + '</tbody></table>';
+    };
 
-    const wsIncome = XLSX.utils.aoa_to_sheet(incomeRows);
-    XLSX.utils.book_append_sheet(wb, wsIncome, 'Приход');
+    const html = `<html><head><meta charset="UTF-8"></head><body>
+        <h2>Отчет за день: ${selectedDate}</h2>
+        <h3>Приход товаров</h3>${toTable(incomeRows)}
+        <br><h3>Расход товаров</h3>${toTable(expenseRows)}
+        <br><h3>Сводка</h3>${toSummary(summaryRows)}
+    </body></html>`;
 
-    const wsExpense = XLSX.utils.aoa_to_sheet(expenseRows);
-    XLSX.utils.book_append_sheet(wb, wsExpense, 'Расход');
-
-    const wsSummary = XLSX.utils.aoa_to_sheet(summaryRows);
-    XLSX.utils.book_append_sheet(wb, wsSummary, 'Сводка');
-
-    XLSX.writeFile(wb, `Отчет_за_день_${selectedDate}.xlsx`);
+    const blob = new Blob([html], { type: 'application/vnd.ms-excel;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `Отчет_за_день_${selectedDate}.xls`;
+    a.click();
+    URL.revokeObjectURL(url);
 }
 
 
