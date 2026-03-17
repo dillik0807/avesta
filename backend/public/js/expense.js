@@ -82,7 +82,11 @@ document.addEventListener('DOMContentLoaded', () => {
         expenseWarehouse.addEventListener('blur', autofillProductPrice);
     }
     if (expenseProduct) {
-        // Используем blur для срабатывания после выбора из datalist
+        // datalist: используем input + blur + change для надёжного срабатывания
+        expenseProduct.addEventListener('input', () => {
+            // Небольшая задержка — datalist заполняет поле не сразу
+            setTimeout(autofillProductPrice, 100);
+        });
         expenseProduct.addEventListener('blur', autofillProductPrice);
         expenseProduct.addEventListener('change', autofillProductPrice);
     }
@@ -247,23 +251,25 @@ function filterExpenseProducts() {
 }
 
 // Автозаполнение цены при выборе товара
-function autofillProductPrice() {
+async function autofillProductPrice() {
     const selectedProduct = document.getElementById('expenseProduct').value.trim();
     const selectedWarehouse = document.getElementById('expenseWarehouse').value.trim();
     const priceInput = document.getElementById('expensePrice');
     
-    console.log('🔍 Автозаполнение цены для товара:', selectedProduct, 'склад:', selectedWarehouse);
+    if (!selectedProduct || !priceInput) return;
     
-    if (!selectedProduct || !priceInput) {
-        console.log('⚠️ Товар не выбран или поле цены не найдено');
-        return;
+    // Если цены не загружены — загружаем сейчас
+    if (!window.appData?.prices || window.appData.prices.length === 0) {
+        try {
+            const prices = await window.api.getPrices();
+            window.appData.prices = prices || [];
+            console.log('💰 Цены загружены при автозаполнении:', window.appData.prices.length);
+        } catch(e) {
+            console.warn('⚠️ Не удалось загрузить цены:', e.message);
+        }
     }
     
-    // Проверяем что данные загружены
-    if (!window.appData?.products) {
-        console.warn('⚠️ Справочник товаров не загружен');
-        return;
-    }
+    if (!window.appData?.products) return;
     
     // Находим товар
     const product = window.appData.products.find(p => {
