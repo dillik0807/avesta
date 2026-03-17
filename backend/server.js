@@ -29,7 +29,20 @@ const PORT = process.env.PORT || 3000;
 
 // Middleware
 app.use(helmet({
-    crossOriginResourcePolicy: { policy: "cross-origin" }
+    crossOriginResourcePolicy: { policy: "cross-origin" },
+    contentSecurityPolicy: {
+        directives: {
+            defaultSrc: ["'self'"],
+            scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'"],
+            scriptSrcAttr: ["'unsafe-inline'"],
+            styleSrc: ["'self'", "'unsafe-inline'"],
+            imgSrc: ["'self'", "data:", "blob:"],
+            connectSrc: ["'self'", "https://avesta-production.up.railway.app", "wss:", "ws:"],
+            fontSrc: ["'self'", "data:"],
+            objectSrc: ["'none'"],
+            workerSrc: ["'self'", "blob:"],
+        }
+    }
 }));
 app.use(compression());
 // Разрешаем все CORS запросы для разработки
