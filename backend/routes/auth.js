@@ -30,6 +30,11 @@ router.post('/login', async (req, res) => {
 
         const user = result.rows[0];
 
+        // Проверка блокировки
+        if (user.is_blocked) {
+            return res.status(403).json({ error: 'Ваш аккаунт заблокирован. Обратитесь к администратору.' });
+        }
+
         // Проверка пароля
         const validPassword = await bcrypt.compare(password, user.password_hash);
         if (!validPassword) {

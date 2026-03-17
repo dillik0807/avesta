@@ -2,9 +2,18 @@ const express = require('express');
 const router = express.Router();
 const bcrypt = require('bcrypt');
 const pool = require('../db');
+const { authenticateToken } = require('./auth');
+
+// Только admin может управлять пользователями
+const requireAdmin = (req, res, next) => {
+    if (req.user.role !== 'admin') {
+        return res.status(403).json({ error: 'Доступ запрещён. Требуются права администратора.' });
+    }
+    next();
+};
 
 // Получить всех пользователей
-router.get('/', async (req, res) => {
+router.get('/', authenticateToken, requireAdmin, async (req, res) => {
     try {
         const result = await pool.query(
             'SELECT id, username, role, warehouse_group, require_password_change, is_blocked FROM users ORDER BY id'
@@ -17,7 +26,7 @@ router.get('/', async (req, res) => {
 });
 
 // Добавить пользователя
-router.post('/', async (req, res) => {
+router.post('/', authenticateToken, requireAdmin, async (req, res) => {
     const { username, password, role, warehouse_group, require_password_change, is_blocked } = req.body;
     
     if (!username || !password || !role) {
@@ -66,7 +75,7 @@ router.post('/', async (req, res) => {
 });
 
 // Обновить пользователя
-router.put('/:id', async (req, res) => {
+router.put('/:id', authenticateToken, requireAdmin, async (req, res) => {
     const { id } = req.params;
     const { username, password, role, warehouse_group, require_password_change, is_blocked } = req.body;
     
@@ -129,7 +138,7 @@ router.put('/:id', async (req, res) => {
 });
 
 // Удалить пользователя
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', authenticateToken, requireAdmin, async (req, res) => {
     const { id } = req.params;
     
     try {
@@ -155,8 +164,8 @@ router.delete('/:id', async (req, res) => {
     }
 });
 
-// Смена пароля
-router.post('/change-password', async (req, res) => {
+// Смена пароля (пользователь меняет свой пароль)
+router.post('/change-password', authenticateToken, async (req, res) => {
     const { username, currentPassword, newPassword } = req.body;
     
     if (!username || !currentPassword || !newPassword) {

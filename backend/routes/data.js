@@ -97,7 +97,6 @@ router.get('/:year', authenticateToken, async (req, res) => {
         const [income, expense, payments, partners, companies, warehouses, products, clients, coalitions] = await Promise.all([
             db.query(`
                 SELECT i.*, TO_CHAR(i.date, 'YYYY-MM-DD') as date, c.name as company, w.name as warehouse, p.name as product,
-                    u.username as user,
                     CASE WHEN eu.username IS NOT NULL AND eu.username != u.username
                          THEN u.username || ' : ' || eu.username
                          ELSE u.username END as user
