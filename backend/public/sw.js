@@ -1,5 +1,5 @@
 // Service Worker для Avesta 2026 PWA
-const CACHE_NAME = 'avesta-v1';
+const CACHE_NAME = 'avesta-v20260318';
 
 // При установке — кешируем только статику
 self.addEventListener('install', event => {
