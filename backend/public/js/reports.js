@@ -491,7 +491,10 @@ window.updateDebtReport = async function() {
         row.className = 'hover:bg-gray-50';
         
         row.innerHTML = `
-            <td class="p-3">${item.client}</td>
+            <td class="p-3">
+                <span class="text-blue-600 hover:text-blue-800 cursor-pointer underline font-medium"
+                    onclick="window.openClientCardModal('${item.client.replace(/'/g, "\\'")}')">${item.client}</span>
+            </td>
             <td class="p-3 text-right">${item.expense.toLocaleString('ru-RU', {minimumFractionDigits: 2})} $</td>
             <td class="p-3 text-right">${item.payment.toLocaleString('ru-RU', {minimumFractionDigits: 2})} $</td>
             <td class="p-3 text-right ${item.debt < 0 ? 'text-red-600 font-bold' : 'text-green-600'}">${item.debt.toLocaleString('ru-RU', {minimumFractionDigits: 2})} $</td>
@@ -930,3 +933,184 @@ window.initReportButtons = function() {
 };
 
 console.log('✅ reports.js инициализирован');
+
+// ========================================
+// 👤 МОДАЛЬНАЯ КАРТОЧКА КЛИЕНТА ИЗ ДОЛГОВ
+// ========================================
+
+window.openClientCardModal = function(clientName) {
+    const old = document.getElementById('clientCardModal');
+    if (old) old.remove();
+
+    const yearData = window.getCurrentYearData();
+    if (!yearData) return;
+
+    const expenses = (yearData.expense || []).filter(i => !i.deleted && i.client === clientName);
+    const payments = (yearData.payments || []).filter(i => !i.deleted && i.client === clientName);
+
+    const totalExpense = expenses.reduce((s, i) => s + parseFloat(i.total || 0), 0);
+    const totalPayment = payments.reduce((s, i) => s + parseFloat(i.amount || 0), 0);
+    const debt = totalPayment - totalExpense;
+    const debtColor = debt < 0 ? 'text-red-600' : 'text-green-600';
+    const fmt = (n) => parseFloat(n || 0).toLocaleString('ru-RU', {minimumFractionDigits: 2});
+
+    const expenseRows = expenses.map(i => `
+        <tr class="hover:bg-gray-50 text-sm">
+            <td class="p-2">${(i.date||'').split('T')[0]}</td>
+            <td class="p-2">${i.product||''}</td>
+            <td class="p-2">${i.warehouse||''}</td>
+            <td class="p-2 text-right">${fmt(i.quantity)}</td>
+            <td class="p-2 text-right">${fmt(i.price)}</td>
+            <td class="p-2 text-right font-medium">${fmt(i.total)}</td>
+            <td class="p-2 text-gray-500">${i.notes||''}</td>
+        </tr>`).join('');
+
+    const paymentRows = payments.map(i => `
+        <tr class="hover:bg-gray-50 text-sm">
+            <td class="p-2">${(i.date||'').split('T')[0]}</td>
+            <td class="p-2 text-right">${fmt(i.somoni)}</td>
+            <td class="p-2 text-right">${fmt(i.rate)}</td>
+            <td class="p-2 text-right font-medium">${fmt(i.amount)}</td>
+            <td class="p-2 text-gray-500">${i.notes||''}</td>
+        </tr>`).join('');
+
+    const modal = document.createElement('div');
+    modal.id = 'clientCardModal';
+    modal.className = 'fixed inset-0 bg-black bg-opacity-50 z-50 flex items-start justify-center overflow-y-auto p-4';
+    modal.innerHTML = `
+        <div class="bg-white rounded-lg shadow-xl w-full max-w-5xl my-4">
+            <div class="flex items-center justify-between p-4 border-b bg-blue-600 text-white rounded-t-lg">
+                <h2 class="text-lg font-bold">👤 Карточка клиента: ${clientName}</h2>
+                <div class="flex gap-2">
+                    <button onclick="window.printClientCardModal()"
+                        class="bg-white text-blue-600 px-3 py-1 rounded text-sm font-medium hover:bg-blue-50">
+                        🖨️ Печать
+                    </button>
+                    <button onclick="window.exportClientCardModalExcel('${clientName.replace(/'/g, "\\'")}')"
+                        class="bg-green-500 text-white px-3 py-1 rounded text-sm font-medium hover:bg-green-600">
+                        📊 Excel
+                    </button>
+                    <button onclick="document.getElementById('clientCardModal').remove()"
+                        class="bg-red-500 text-white px-3 py-1 rounded text-sm font-medium hover:bg-red-600">
+                        ✕ Закрыть
+                    </button>
+                </div>
+            </div>
+            <div class="p-4" id="clientCardModalPrintArea">
+                <div class="grid grid-cols-3 gap-4 mb-4">
+                    <div class="bg-red-50 p-3 rounded text-center">
+                        <div class="text-sm text-gray-500">Расход</div>
+                        <div class="text-lg font-bold text-red-600">${fmt(totalExpense)} $</div>
+                    </div>
+                    <div class="bg-green-50 p-3 rounded text-center">
+                        <div class="text-sm text-gray-500">Погашено</div>
+                        <div class="text-lg font-bold text-green-600">${fmt(totalPayment)} $</div>
+                    </div>
+                    <div class="bg-gray-50 p-3 rounded text-center">
+                        <div class="text-sm text-gray-500">Долг</div>
+                        <div class="text-lg font-bold ${debtColor}">${fmt(debt)} $</div>
+                    </div>
+                </div>
+                <h3 class="font-bold text-gray-700 mb-2">📤 Расходы (${expenses.length})</h3>
+                <div class="overflow-x-auto mb-4">
+                    <table class="w-full border-collapse text-sm">
+                        <thead class="bg-gray-100">
+                            <tr>
+                                <th class="p-2 text-left">Дата</th>
+                                <th class="p-2 text-left">Товар</th>
+                                <th class="p-2 text-left">Склад</th>
+                                <th class="p-2 text-right">Кол-во</th>
+                                <th class="p-2 text-right">Цена</th>
+                                <th class="p-2 text-right">Сумма</th>
+                                <th class="p-2 text-left">Примечания</th>
+                            </tr>
+                        </thead>
+                        <tbody>${expenseRows || '<tr><td colspan="7" class="p-3 text-center text-gray-400">Нет данных</td></tr>'}</tbody>
+                        <tfoot class="bg-gray-50 font-bold">
+                            <tr>
+                                <td colspan="5" class="p-2 text-right">ИТОГО:</td>
+                                <td class="p-2 text-right">${fmt(totalExpense)} $</td>
+                                <td></td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+                <h3 class="font-bold text-gray-700 mb-2">💰 Погашения (${payments.length})</h3>
+                <div class="overflow-x-auto">
+                    <table class="w-full border-collapse text-sm">
+                        <thead class="bg-gray-100">
+                            <tr>
+                                <th class="p-2 text-left">Дата</th>
+                                <th class="p-2 text-right">Сомони</th>
+                                <th class="p-2 text-right">Курс</th>
+                                <th class="p-2 text-right">Сумма ($)</th>
+                                <th class="p-2 text-left">Примечания</th>
+                            </tr>
+                        </thead>
+                        <tbody>${paymentRows || '<tr><td colspan="5" class="p-3 text-center text-gray-400">Нет данных</td></tr>'}</tbody>
+                        <tfoot class="bg-gray-50 font-bold">
+                            <tr>
+                                <td colspan="3" class="p-2 text-right">ИТОГО:</td>
+                                <td class="p-2 text-right">${fmt(totalPayment)} $</td>
+                                <td></td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+            </div>
+        </div>
+    `;
+
+    modal.addEventListener('click', (e) => { if (e.target === modal) modal.remove(); });
+    document.body.appendChild(modal);
+};
+
+window.printClientCardModal = function() {
+    const content = document.getElementById('clientCardModalPrintArea');
+    if (!content) return;
+    const win = window.open('', '_blank');
+    win.document.write(`<html><head><meta charset="UTF-8"><title>Карточка клиента</title>
+        <style>body{font-family:Arial,sans-serif;font-size:12px;padding:20px}
+        table{border-collapse:collapse;width:100%}th,td{border:1px solid #ccc;padding:4px 8px}
+        th{background:#f0f0f0}</style></head><body>${content.innerHTML}</body></html>`);
+    win.document.close();
+    win.print();
+};
+
+window.exportClientCardModalExcel = function(clientName) {
+    const yearData = window.getCurrentYearData();
+    if (!yearData) return;
+
+    const expenses = (yearData.expense || []).filter(i => !i.deleted && i.client === clientName);
+    const payments = (yearData.payments || []).filter(i => !i.deleted && i.client === clientName);
+    const totalExpense = expenses.reduce((s, i) => s + parseFloat(i.total || 0), 0);
+    const totalPayment = payments.reduce((s, i) => s + parseFloat(i.amount || 0), 0);
+    const debt = totalPayment - totalExpense;
+
+    const wb = XLSX.utils.book_new();
+    const rows = [];
+    rows.push([`Карточка клиента: ${clientName}`]);
+    rows.push([`Дата: ${new Date().toLocaleDateString('ru-RU')}`]);
+    rows.push([]);
+    rows.push(['Расход ($):', totalExpense.toFixed(2), 'Погашено ($):', totalPayment.toFixed(2), 'Долг ($):', debt.toFixed(2)]);
+    rows.push([]);
+    rows.push(['РАСХОДЫ']);
+    rows.push(['Дата','Товар','Склад','Количество','Цена','Сумма','Примечания']);
+    expenses.forEach(i => rows.push([
+        (i.date||'').split('T')[0], i.product||'', i.warehouse||'',
+        parseFloat(i.quantity||0), parseFloat(i.price||0), parseFloat(i.total||0), i.notes||''
+    ]));
+    rows.push(['','','','','ИТОГО:', totalExpense.toFixed(2), '']);
+    rows.push([]);
+    rows.push(['ПОГАШЕНИЯ']);
+    rows.push(['Дата','Сомони','Курс','Сумма ($)','Примечания']);
+    payments.forEach(i => rows.push([
+        (i.date||'').split('T')[0], parseFloat(i.somoni||0), parseFloat(i.rate||0),
+        parseFloat(i.amount||0), i.notes||''
+    ]));
+    rows.push(['','','ИТОГО:', totalPayment.toFixed(2), '']);
+
+    const ws = XLSX.utils.aoa_to_sheet(rows);
+    XLSX.utils.book_append_sheet(wb, ws, clientName.substring(0, 31));
+    XLSX.writeFile(wb, `Карточка_${clientName}_${new Date().toISOString().split('T')[0]}.xlsx`);
+};
