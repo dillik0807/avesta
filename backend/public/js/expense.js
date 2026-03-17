@@ -278,17 +278,29 @@ function autofillProductPrice() {
     
     console.log('✅ Товар найден:', product);
     
-    // Находим склад для определения группы
+    // Определяем группу склада для поиска цены
+    // Приоритет: 1) выбранный склад в форме, 2) группа текущего пользователя (завсклад), 3) ALL
     let warehouseGroup = 'ALL';
+
     if (selectedWarehouse && window.appData?.warehouses) {
+        // Если склад выбран — берём его группу
         const warehouse = window.appData.warehouses.find(w => {
             const name = typeof w === 'string' ? w : w.name;
             return name === selectedWarehouse;
         });
-        
         if (warehouse && typeof warehouse === 'object' && warehouse.warehouse_group) {
             warehouseGroup = warehouse.warehouse_group;
-            console.log('📦 Группа склада:', warehouseGroup);
+            console.log('📦 Группа из выбранного склада:', warehouseGroup);
+        }
+    } else {
+        // Склад не выбран — берём группу текущего пользователя
+        const userGroup = window.currentUser?.warehouseGroup;
+        if (userGroup) {
+            const groups = Array.isArray(userGroup) ? userGroup : [userGroup];
+            if (groups.length > 0 && groups[0]) {
+                warehouseGroup = groups[0]; // берём первую группу пользователя
+                console.log('📦 Группа из пользователя:', warehouseGroup);
+            }
         }
     }
     
