@@ -77,6 +77,9 @@ document.addEventListener('DOMContentLoaded', () => {
     if (expenseWarehouse) {
         expenseWarehouse.addEventListener('change', filterExpenseProducts);
         expenseWarehouse.addEventListener('input', filterExpenseProducts);
+        // При смене склада пересчитываем цену если товар уже выбран
+        expenseWarehouse.addEventListener('change', autofillProductPrice);
+        expenseWarehouse.addEventListener('blur', autofillProductPrice);
     }
     if (expenseProduct) {
         // Используем blur для срабатывания после выбора из datalist
@@ -293,22 +296,21 @@ function autofillProductPrice() {
     let price = null;
     
     if (window.appData?.prices && window.appData.prices.length > 0) {
+        // Фильтруем цены для данного товара
+        const productPrices = window.appData.prices.filter(p => p.product_id === product.id);
+        
+        // Сортируем по дате — новые первые
+        productPrices.sort((a, b) => new Date(b.effective_date) - new Date(a.effective_date));
+        
         // Сначала ищем цену для конкретной группы склада
-        const specificPrice = window.appData.prices.find(p => 
-            p.product_id === product.id && 
-            p.warehouse_group === warehouseGroup
-        );
+        const specificPrice = productPrices.find(p => p.warehouse_group === warehouseGroup);
         
         if (specificPrice) {
             price = specificPrice.price;
             console.log(`💰 Найдена цена для группы ${warehouseGroup}: ${price}`);
         } else {
-            // Если не найдена, ищем цену для всех складов
-            const generalPrice = window.appData.prices.find(p => 
-                p.product_id === product.id && 
-                p.warehouse_group === 'ALL'
-            );
-            
+            // Если не найдена — берём общую цену (ALL)
+            const generalPrice = productPrices.find(p => p.warehouse_group === 'ALL');
             if (generalPrice) {
                 price = generalPrice.price;
                 console.log(`💰 Найдена общая цена: ${price}`);
