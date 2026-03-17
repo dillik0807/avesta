@@ -314,8 +314,8 @@ async function autofillProductPrice() {
     let price = null;
     
     if (window.appData?.prices && window.appData.prices.length > 0) {
-        // Фильтруем цены для данного товара
-        const productPrices = window.appData.prices.filter(p => p.product_id === product.id);
+        // Фильтруем цены для данного товара (== для совместимости числа/строки)
+        const productPrices = window.appData.prices.filter(p => p.product_id == product.id);
         
         // Сортируем по дате — новые первые
         productPrices.sort((a, b) => new Date(b.effective_date) - new Date(a.effective_date));
