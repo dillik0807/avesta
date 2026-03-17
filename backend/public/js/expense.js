@@ -302,26 +302,42 @@ function autofillProductPrice() {
         // Сортируем по дате — новые первые
         productPrices.sort((a, b) => new Date(b.effective_date) - new Date(a.effective_date));
         
+        console.log(`💰 Все цены для товара "${selectedProduct}" (id=${product.id}):`, 
+            productPrices.map(p => `${p.warehouse_group}=${p.price} (${p.effective_date})`));
+        
         // Сначала ищем цену для конкретной группы склада
         const specificPrice = productPrices.find(p => p.warehouse_group === warehouseGroup);
         
         if (specificPrice) {
             price = specificPrice.price;
-            console.log(`💰 Найдена цена для группы ${warehouseGroup}: ${price}`);
-        } else {
-            // Если не найдена — берём общую цену (ALL)
+            console.log(`✅ Цена для группы "${warehouseGroup}": ${price}`);
+        } else if (warehouseGroup !== 'ALL') {
+            // Если нет цены для группы — берём ALL
             const generalPrice = productPrices.find(p => p.warehouse_group === 'ALL');
             if (generalPrice) {
                 price = generalPrice.price;
-                console.log(`💰 Найдена общая цена: ${price}`);
+                console.log(`✅ Общая цена (ALL): ${price}`);
+            } else {
+                console.warn(`⚠️ Нет цены ни для группы "${warehouseGroup}", ни для ALL`);
+            }
+        } else {
+            // warehouseGroup === 'ALL' и не нашли — берём первую попавшуюся
+            if (productPrices.length > 0) {
+                price = productPrices[0].price;
+                console.log(`✅ Первая доступная цена: ${price}`);
             }
         }
+    } else {
+        console.warn('⚠️ appData.prices пустой или не загружен');
     }
     
-    // Если цена не найдена в истории, используем цену из товара
+    // Fallback: только если цены вообще нет в product_prices — берём из товара (это ALL цена)
     if (!price && product.price && product.price > 0) {
-        price = product.price;
-        console.log(`💰 Используем цену из товара: ${price}`);
+        // Используем только если склад не выбран или группа не определена
+        if (warehouseGroup === 'ALL') {
+            price = product.price;
+            console.log(`💰 Fallback цена из товара: ${price}`);
+        }
     }
     
     if (price && price > 0) {

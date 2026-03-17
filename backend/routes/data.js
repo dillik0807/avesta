@@ -160,7 +160,7 @@ router.get('/:year', authenticateToken, async (req, res) => {
             db.query(`
                 SELECT p.*,
                     (SELECT price FROM product_prices
-                     WHERE product_id = p.id
+                     WHERE product_id = p.id AND warehouse_group = 'ALL'
                      ORDER BY effective_date DESC, created_at DESC
                      LIMIT 1) as price
                 FROM products p ORDER BY p.name
