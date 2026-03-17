@@ -491,7 +491,10 @@ window.updateDebtReport = async function() {
         row.className = 'hover:bg-gray-50';
         
         row.innerHTML = `
-            <td class="p-3">${item.client}</td>
+            <td class="p-3">
+                <span class="text-blue-600 hover:text-blue-800 cursor-pointer underline font-medium"
+                    onclick="window.openClientCardModal('${item.client.replace(/'/g, "\\'")}')">${item.client}</span>
+            </td>
             <td class="p-3 text-right">${item.expense.toLocaleString('ru-RU', {minimumFractionDigits: 2})} $</td>
             <td class="p-3 text-right">${item.payment.toLocaleString('ru-RU', {minimumFractionDigits: 2})} $</td>
             <td class="p-3 text-right ${item.debt < 0 ? 'text-red-600 font-bold' : 'text-green-600'}">${item.debt.toLocaleString('ru-RU', {minimumFractionDigits: 2})} $</td>
