@@ -942,11 +942,30 @@ window.openClientCardModal = function(clientName) {
     const old = document.getElementById('clientCardModal');
     if (old) old.remove();
 
-    const yearData = window.getCurrentYearData();
-    if (!yearData) return;
+    // Загружаем данные по всем складам
+    const year = window.currentYear || new Date().getFullYear();
+    const token = localStorage.getItem('authToken');
+    const base = window.api ? window.api.baseURL : '';
 
-    const expenses = (yearData.expense || []).filter(i => !i.deleted && i.client === clientName);
-    const payments = (yearData.payments || []).filter(i => !i.deleted && i.client === clientName);
+    fetch(`${base}/api/data/${year}?all=true`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+    })
+    .then(r => r.json())
+    .then(fullData => {
+        const expenses = (fullData.expense || []).filter(i => !i.deleted && i.client === clientName);
+        const payments = (fullData.payments || []).filter(i => !i.deleted && i.client === clientName);
+        _renderClientCardModal(clientName, expenses, payments);
+    })
+    .catch(() => {
+        // fallback на локальные данные
+        const yearData = window.getCurrentYearData() || {};
+        const expenses = (yearData.expense || []).filter(i => !i.deleted && i.client === clientName);
+        const payments = (yearData.payments || []).filter(i => !i.deleted && i.client === clientName);
+        _renderClientCardModal(clientName, expenses, payments);
+    });
+};
+
+function _renderClientCardModal(clientName, expenses, payments) {
 
     const totalExpense = expenses.reduce((s, i) => s + parseFloat(i.total || 0), 0);
     const totalPayment = payments.reduce((s, i) => s + parseFloat(i.amount || 0), 0);
@@ -1078,11 +1097,28 @@ window.printClientCardModal = function() {
 };
 
 window.exportClientCardModalExcel = function(clientName) {
-    const yearData = window.getCurrentYearData();
-    if (!yearData) return;
+    const year = window.currentYear || new Date().getFullYear();
+    const token = localStorage.getItem('authToken');
+    const base = window.api ? window.api.baseURL : '';
 
-    const expenses = (yearData.expense || []).filter(i => !i.deleted && i.client === clientName);
-    const payments = (yearData.payments || []).filter(i => !i.deleted && i.client === clientName);
+    fetch(`${base}/api/data/${year}?all=true`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+    })
+    .then(r => r.json())
+    .then(fullData => {
+        const expenses = (fullData.expense || []).filter(i => !i.deleted && i.client === clientName);
+        const payments = (fullData.payments || []).filter(i => !i.deleted && i.client === clientName);
+        _exportClientCardExcel(clientName, expenses, payments);
+    })
+    .catch(() => {
+        const yearData = window.getCurrentYearData() || {};
+        const expenses = (yearData.expense || []).filter(i => !i.deleted && i.client === clientName);
+        const payments = (yearData.payments || []).filter(i => !i.deleted && i.client === clientName);
+        _exportClientCardExcel(clientName, expenses, payments);
+    });
+};
+
+function _exportClientCardExcel(clientName, expenses, payments) {
     const totalExpense = expenses.reduce((s, i) => s + parseFloat(i.total || 0), 0);
     const totalPayment = payments.reduce((s, i) => s + parseFloat(i.amount || 0), 0);
     const debt = totalPayment - totalExpense;

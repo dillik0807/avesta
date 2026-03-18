@@ -84,21 +84,39 @@ function loadClientsList() {
     console.log(`✅ Загружено ${sortedClients.length} клиентов`);
 }
 
+// Загрузка полных данных (все склады) через API
+async function loadAllData() {
+    try {
+        const year = window.currentYear || new Date().getFullYear();
+        const token = localStorage.getItem('authToken');
+        const base = window.api ? window.api.baseURL : '';
+        const res = await fetch(`${base}/api/data/${year}?all=true`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (!res.ok) throw new Error('Ошибка загрузки');
+        return await res.json();
+    } catch(e) {
+        console.error('Ошибка loadAllData:', e);
+        return window.getCurrentYearData(); // fallback
+    }
+}
+
 // Генерация карточки клиента
-function generateClientCard() {
+async function generateClientCard() {
     const showAllClients = document.getElementById('clientCardShowAllClients')?.checked;
     const selectedClient = showAllClients ? '' : document.getElementById('clientCardClientInput')?.value.trim();
     const dateFrom = document.getElementById('clientCardDateFrom')?.value;
     const dateTo = document.getElementById('clientCardDateTo')?.value;
-    
-    const yearData = window.getCurrentYearData();
-    if (!yearData) {
+
+    // Загружаем данные по всем складам
+    const fullData = await loadAllData();
+    if (!fullData) {
         alert('Нет данных для формирования отчета');
         return;
     }
-    
+
     // Фильтруем расходы
-    let expenses = yearData.expense ? yearData.expense.filter(item => {
+    let expenses = fullData.expense ? fullData.expense.filter(item => {
         if (item.deleted) return false;
         if (!item.client) return false;
         if (selectedClient && item.client !== selectedClient) return false;
@@ -111,7 +129,7 @@ function generateClientCard() {
     }) : [];
     
     // Фильтруем погашения
-    let payments = yearData.payments ? yearData.payments.filter(item => {
+    let payments = fullData.payments ? fullData.payments.filter(item => {
         if (item.deleted) return false;
         if (!item.client) return false;
         if (selectedClient && item.client !== selectedClient) return false;
@@ -357,20 +375,20 @@ function printClientCard() {
 }
 
 // Экспорт в Excel
-function exportClientCardToExcel() {
+async function exportClientCardToExcel() {
     const showAllClients = document.getElementById('clientCardShowAllClients')?.checked;
     const selectedClient = showAllClients ? '' : document.getElementById('clientCardClientInput')?.value.trim();
     const dateFrom = document.getElementById('clientCardDateFrom')?.value;
     const dateTo = document.getElementById('clientCardDateTo')?.value;
     
-    const yearData = window.getCurrentYearData();
-    if (!yearData) {
+    const fullData = await loadAllData();
+    if (!fullData) {
         alert('Нет данных для экспорта');
         return;
     }
     
     // Фильтруем расходы
-    let expenses = yearData.expense ? yearData.expense.filter(item => {
+    let expenses = fullData.expense ? fullData.expense.filter(item => {
         if (item.deleted) return false;
         if (!item.client) return false;
         if (selectedClient && item.client !== selectedClient) return false;
@@ -383,7 +401,7 @@ function exportClientCardToExcel() {
     }) : [];
     
     // Фильтруем погашения
-    let payments = yearData.payments ? yearData.payments.filter(item => {
+    let payments = fullData.payments ? fullData.payments.filter(item => {
         if (item.deleted) return false;
         if (!item.client) return false;
         if (selectedClient && item.client !== selectedClient) return false;
