@@ -1290,7 +1290,15 @@
                             </div>
                         </div>
                         
-                        <div class="mt-4 flex gap-2">
+                        <div class="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4 mb-3">
+                            <div>
+                                <label for="balanceSummaryDate" class="block text-sm font-medium mb-2">📅 Дата остатков (на конец дня)</label>
+                                <input type="date" id="balanceSummaryDate" class="w-full p-2 border rounded"
+                                    title="Выберите дату для расчета остатков на эту дату">
+                            </div>
+                        </div>
+
+                        <div class="mt-2 flex gap-2">
                             <button id="updateBalanceSummaryBtn" class="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700">
                                 Обновить
                             </button>

@@ -13,6 +13,11 @@ window.updateBalanceSummary = function() {
     const selectedGroups = Array.from(document.querySelectorAll('#balanceGroupsList input[type="checkbox"]:checked')).map(cb => cb.value);
     const selectedWarehouses = Array.from(document.querySelectorAll('#balanceWarehousesList input[type="checkbox"]:checked')).map(cb => cb.value);
     const selectedProducts = Array.from(document.querySelectorAll('#balanceProductsList input[type="checkbox"]:checked')).map(cb => cb.value);
+
+    // Фильтр по дате — остатки на конец выбранного дня
+    const dateInput = document.getElementById('balanceSummaryDate')?.value;
+    const filterDate = dateInput ? new Date(dateInput) : null;
+    if (filterDate) filterDate.setHours(23, 59, 59, 999);
     
     const yearData = window.getCurrentYearData();
     const appData = window.appData;
@@ -28,6 +33,9 @@ window.updateBalanceSummary = function() {
     if (yearData.income) {
         yearData.income.forEach(item => {
             if (item.deleted) return;
+
+            // Фильтр по дате
+            if (filterDate && new Date(item.date) > filterDate) return;
             
             // Фильтр по группе складов
             if (selectedGroups.length > 0) {
@@ -61,6 +69,9 @@ window.updateBalanceSummary = function() {
     if (yearData.expense) {
         yearData.expense.forEach(item => {
             if (item.deleted) return;
+
+            // Фильтр по дате
+            if (filterDate && new Date(item.date) > filterDate) return;
             
             // Фильтр по группе складов
             if (selectedGroups.length > 0) {
