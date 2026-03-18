@@ -37,7 +37,7 @@ app.use(helmet({
             scriptSrcAttr: ["'unsafe-inline'"],
             styleSrc: ["'self'", "'unsafe-inline'"],
             imgSrc: ["'self'", "data:", "blob:"],
-            connectSrc: ["'self'", "https://avesta-production.up.railway.app", "wss:", "ws:"],
+            connectSrc: ["'self'", "https://avesta-production.up.railway.app", "https://me.kis.v2.scr.kaspersky-labs.com", "wss://me.kis.v2.scr.kaspersky-labs.com", "wss:", "ws:"],
             fontSrc: ["'self'", "data:"],
             objectSrc: ["'none'"],
             workerSrc: ["'self'", "blob:"],

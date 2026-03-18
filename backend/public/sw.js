@@ -29,8 +29,10 @@ self.addEventListener('activate', event => {
 
 // Сеть в приоритете, кеш как запасной вариант
 self.addEventListener('fetch', event => {
-  // API запросы — только через сеть
-  if (event.request.url.includes('/api/')) {
+  const url = event.request.url;
+
+  // Пропускаем API запросы и запросы к сторонним доменам
+  if (url.includes('/api/') || !url.startsWith(self.location.origin)) {
     return;
   }
 
