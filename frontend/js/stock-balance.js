@@ -52,8 +52,9 @@ window.generateStockBalanceReport = function() {
         return;
     }
 
-    // Фильтруем данные по дате
+    // Фильтруем данные по дате (включительно — весь выбранный день)
     const filterDate = date ? new Date(date) : new Date();
+    filterDate.setHours(23, 59, 59, 999); // конец выбранного дня
     const currentYear = filterDate.getFullYear();
     
     // Рассчитываем остатки
@@ -316,8 +317,8 @@ window.exportStockBalanceToExcel = function() {
     const showZero = document.getElementById('showZeroBalance').checked;
 
     const filterDate = date ? new Date(date) : new Date();
+    filterDate.setHours(23, 59, 59, 999); // конец выбранного дня
     const currentYear = filterDate.getFullYear();
-    const formattedDate = filterDate.toLocaleDateString('ru-RU');
     
     // Рассчитываем остатки
     const balances = {};
