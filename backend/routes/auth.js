@@ -61,7 +61,7 @@ router.post('/login', async (req, res) => {
                 warehouseGroup: warehouseGroup
             },
             process.env.JWT_SECRET,
-            { expiresIn: '24h' }
+            { expiresIn: '30d' }
         );
 
         res.json({

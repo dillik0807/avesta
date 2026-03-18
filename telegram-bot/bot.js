@@ -1,4 +1,4 @@
-/**
+﻿/**
  * 🤖 Telegram бот для системы учёта товаров Avesta
  * PostgreSQL версия — работает через REST API бэкенда
  */
@@ -89,6 +89,7 @@ const setUserYear  = (userId, year) => { if (sessions[userId]) { sessions[userId
 // ─── API ─────────────────────────────────────────────────────────────────────
 const apiGet = async (path, token) => {
     const res = await fetch(`${API_URL}${path}`, { headers: { 'Authorization': `Bearer ${token}` } });
+    if (res.status === 401 || res.status === 403) throw new Error(`AUTH_EXPIRED`);
     if (!res.ok) throw new Error(`API ${res.status}`);
     return res.json();
 };
@@ -99,6 +100,7 @@ const apiPost = async (path, body, token) => {
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
         body: JSON.stringify(body)
     });
+    if (res.status === 401 || res.status === 403) throw new Error(`AUTH_EXPIRED`);
     if (!res.ok) throw new Error(`API ${res.status}: ${await res.text()}`);
     return res.json();
 };
@@ -152,6 +154,17 @@ const sendLong = async (ctx, msg, extra = {}) => {
     const parts = msg.match(/[\s\S]{1,4000}/g) || [];
     for (let i = 0; i < parts.length; i++) {
         await sendMd(ctx, parts[i], i === parts.length - 1 ? extra : {});
+    }
+};
+
+// Обработка ошибок API — при истёкшем токене сбрасываем сессию
+const handleApiError = async (ctx, userId, e) => {
+    if (e.message === 'AUTH_EXPIRED') {
+        sessions[userId] = {};
+        saveSessions(userId);
+        await ctx.reply('⚠️ Сессия истекла. Войдите заново:', loginKeyboard);
+    } else {
+        await ctx.reply(`❌ Ошибка: ${e.message}`);
     }
 };
 
@@ -478,7 +491,7 @@ bot.hears('📦 Остатки складов', async (ctx) => {
 
         msg += `${'─'.repeat(20)}\n📊 *ИТОГО: ${formatNumber(total)} тонн*`;
         await sendLong(ctx, msg);
-    } catch (e) { ctx.reply(`❌ Ошибка: ${e.message}`); }
+    } catch (e) { handleApiError(ctx, userId, e); }
 });
 
 bot.hears('🏭 Фактический остаток', async (ctx) => {
@@ -530,7 +543,7 @@ bot.hears('🏭 Фактический остаток', async (ctx) => {
         }
 
         await sendLong(ctx, msg);
-    } catch (e) { ctx.reply(`❌ Ошибка: ${e.message}`); }
+    } catch (e) { handleApiError(ctx, userId, e); }
 });
 
 bot.hears('💰 Долги клиентов', async (ctx) => {
@@ -561,7 +574,7 @@ bot.hears('💰 Долги клиентов', async (ctx) => {
         saveSessions();
         const exportBtn = Markup.inlineKeyboard([[Markup.button.callback('📊 Экспорт в Excel', 'exdebts')]]);
         await sendLong(ctx, msg, exportBtn);
-    } catch (e) { ctx.reply(`❌ Ошибка: ${e.message}`); }
+    } catch (e) { handleApiError(ctx, userId, e); }
 });
 
 bot.action('exdebts', async (ctx) => {
@@ -588,7 +601,7 @@ bot.action('exdebts', async (ctx) => {
         tr.font = { bold:true };
         const buf = await wb.xlsx.writeBuffer();
         await ctx.replyWithDocument({ source: Buffer.from(buf), filename: `Dolgi_${year}.xlsx` });
-    } catch (e) { ctx.reply(`❌ Ошибка: ${e.message}`); }
+    } catch (e) { handleApiError(ctx, userId, e); }
 });
 
 bot.hears('📊 Сводка', async (ctx) => {
@@ -614,7 +627,7 @@ bot.hears('📊 Сводка', async (ctx) => {
             `📋 Расход: ${(data.expense||[]).length} записей\n` +
             `📋 Погашения: ${(data.payments||[]).length} записей`;
         await sendMd(ctx, msg);
-    } catch (e) { ctx.reply(`❌ Ошибка: ${e.message}`); }
+    } catch (e) { handleApiError(ctx, userId, e); }
 });
 
 // ─── Отчёт за день / Расход за день ──────────────────────────────────────────
@@ -687,7 +700,7 @@ const showDailyReport = async (ctx, userId, date, dateName = '') => {
 
         const exportBtn = Markup.inlineKeyboard([[Markup.button.callback('📊 Экспорт в Excel', `exdaily_${date}`)]]);
         await sendLong(ctx, msg, exportBtn);
-    } catch (e) { ctx.reply(`❌ Ошибка: ${e.message}`); }
+    } catch (e) { handleApiError(ctx, userId, e); }
 };
 
 bot.action(/^exdaily_(.+)$/, async (ctx) => {
@@ -710,7 +723,7 @@ bot.action(/^exdaily_(.+)$/, async (ctx) => {
         expense.forEach(e => ws2.addRow({date:e.date,client:e.client||'',product:e.product||'',warehouse:e.warehouse||'',tons:parseFloat(e.tons)||0,price:parseFloat(e.price)||0,total:parseFloat(e.total)||0}));
         const buf = await wb.xlsx.writeBuffer();
         await ctx.replyWithDocument({ source: Buffer.from(buf), filename: `otchet_${date}.xlsx` });
-    } catch (e) { ctx.reply(`❌ Ошибка: ${e.message}`); }
+    } catch (e) { handleApiError(ctx, userId, e); }
 });
 
 bot.hears('📤 Расход за день', async (ctx) => {
@@ -786,7 +799,7 @@ const showExpenseDay = async (ctx, userId, daysAgo) => {
             [Markup.button.callback('🔄 Обновить', 'expense_refresh')]
         ]);
         await sendLong(ctx, msg, kb);
-    } catch (e) { ctx.reply(`❌ Ошибка: ${e.message}`); }
+    } catch (e) { handleApiError(ctx, userId, e); }
 };
 
 bot.action(/^expday2_(\d)$/, async (ctx) => {
@@ -860,7 +873,7 @@ bot.hears(/📈|приход за период/i, async (ctx) => {
         });
         msg += `\n${'─'.repeat(20)}\n📊 Всего: *${tCount}* записей\n📦 Итого: *${formatNumber(tTons)} тонн*`;
         await sendLong(ctx, msg, Markup.inlineKeyboard([[Markup.button.callback('📋 Детальный за период', 'income_detail_menu')]]));
-    } catch (e) { ctx.reply(`❌ Ошибка: ${e.message}`); }
+    } catch (e) { handleApiError(ctx, userId, e); }
 });
 
 bot.action('income_detail_menu', async (ctx) => {
@@ -886,7 +899,7 @@ bot.action(/^incdet_(today|yesterday|week|month|year)$/, async (ctx) => {
         await sendLong(ctx, msg, exportBtn);
         sessions[userId].lastIncomeData = { pType, items: filtered };
         saveSessions();
-    } catch (e) { ctx.reply(`❌ Ошибка: ${e.message}`); }
+    } catch (e) { handleApiError(ctx, userId, e); }
 });
 
 bot.action(/^exincdet_(.+)$/, async (ctx) => {
@@ -908,7 +921,7 @@ bot.action(/^exincdet_(.+)$/, async (ctx) => {
         items.forEach(i => ws.addRow({ date:i.date, wagon:i.wagon||'', product:i.product||'', warehouse:i.warehouse||'', company:i.company||'', qty_fact:parseFloat(i.qty_fact)||0, tons:formatNumber((parseFloat(i.qty_fact)||0)/20) }));
         const buf = await wb.xlsx.writeBuffer();
         await ctx.replyWithDocument({ source: Buffer.from(buf), filename: `prikhod_${s.lastIncomeData?.pType||'export'}.xlsx` });
-    } catch (e) { ctx.reply(`❌ Ошибка: ${e.message}`); }
+    } catch (e) { handleApiError(ctx, userId, e); }
 });
 
 // ─── Расход за период ─────────────────────────────────────────────────────────
@@ -933,7 +946,7 @@ bot.hears(/📉|расход за период/i, async (ctx) => {
         });
         msg += `\n${'─'.repeat(20)}\n📊 Всего: *${tCount}* записей\n📦 Тоннаж: *${formatNumber(tTons)} т*\n💵 Сумма: *${formatNumber(tSum)} $*`;
         await sendLong(ctx, msg, Markup.inlineKeyboard([[Markup.button.callback('📋 Детальный за период', 'expense_detail_menu')]]));
-    } catch (e) { ctx.reply(`❌ Ошибка: ${e.message}`); }
+    } catch (e) { handleApiError(ctx, userId, e); }
 });
 
 bot.action('expense_detail_menu', async (ctx) => {
@@ -960,7 +973,7 @@ bot.action(/^expdet_(today|yesterday|week|month|year)$/, async (ctx) => {
         await sendLong(ctx, msg, exportBtn);
         sessions[userId].lastExpenseData = { pType, items: filtered };
         saveSessions();
-    } catch (e) { ctx.reply(`❌ Ошибка: ${e.message}`); }
+    } catch (e) { handleApiError(ctx, userId, e); }
 });
 
 bot.action(/^exexpdet_(.+)$/, async (ctx) => {
@@ -981,7 +994,7 @@ bot.action(/^exexpdet_(.+)$/, async (ctx) => {
         items.forEach(e => ws.addRow({ date:e.date, client:e.client||'', product:e.product||'', warehouse:e.warehouse||'', tons:parseFloat(e.tons)||0, price:parseFloat(e.price)||0, total:parseFloat(e.total)||0 }));
         const buf = await wb.xlsx.writeBuffer();
         await ctx.replyWithDocument({ source: Buffer.from(buf), filename: `rashod_${s.lastExpenseData?.pType||'export'}.xlsx` });
-    } catch (e) { ctx.reply(`❌ Ошибка: ${e.message}`); }
+    } catch (e) { handleApiError(ctx, userId, e); }
 });
 
 // ─── Погашения за период ──────────────────────────────────────────────────────
@@ -1006,7 +1019,7 @@ bot.hears(/💵|погашения за период/i, async (ctx) => {
         });
         msg += `\n${'─'.repeat(20)}\n📊 Всего: *${tCount}* записей\n💵 Итого: *${formatNumber(tSum)} $*`;
         await sendLong(ctx, msg, Markup.inlineKeyboard([[Markup.button.callback('📋 Детальные за период', 'payments_detail_menu')]]));
-    } catch (e) { ctx.reply(`❌ Ошибка: ${e.message}`); }
+    } catch (e) { handleApiError(ctx, userId, e); }
 });
 
 bot.action('payments_detail_menu', async (ctx) => {
@@ -1032,7 +1045,7 @@ bot.action(/^paydet_(today|yesterday|week|month|year)$/, async (ctx) => {
         await sendLong(ctx, msg, exportBtn);
         sessions[userId].lastPaymentsData = { pType, items: filtered };
         saveSessions();
-    } catch (e) { ctx.reply(`❌ Ошибка: ${e.message}`); }
+    } catch (e) { handleApiError(ctx, userId, e); }
 });
 
 bot.action(/^expaydet_(.+)$/, async (ctx) => {
@@ -1052,7 +1065,7 @@ bot.action(/^expaydet_(.+)$/, async (ctx) => {
         items.forEach(p => ws.addRow({ date:p.date, client:p.client||'', amount:parseFloat(p.amount)||0, notes:p.notes||'' }));
         const buf = await wb.xlsx.writeBuffer();
         await ctx.replyWithDocument({ source: Buffer.from(buf), filename: `pogasheniya_${s.lastPaymentsData?.pType||'export'}.xlsx` });
-    } catch (e) { ctx.reply(`❌ Ошибка: ${e.message}`); }
+    } catch (e) { handleApiError(ctx, userId, e); }
 });
 
 // ─── Уведомления о долгах ────────────────────────────────────────────────────
@@ -1122,7 +1135,7 @@ bot.action(/^notify_(\d+)$/, async (ctx) => {
 
         const exportBtn = Markup.inlineKeyboard([[Markup.button.callback('📊 Экспорт в Excel', `exnotify_${daysAgo}`)]]);
         await sendLong(ctx, msg, exportBtn);
-    } catch (e) { ctx.reply(`❌ Ошибка: ${e.message}`); }
+    } catch (e) { handleApiError(ctx, userId, e); }
 });
 
 bot.action(/^exnotify_(\d+)$/, async (ctx) => {
@@ -1151,7 +1164,7 @@ bot.action(/^exnotify_(\d+)$/, async (ctx) => {
         ws.addRow({ num:'', client:'ИТОГО:', totalDebt, dayPurchases: totalNotificationAmount, products:'', warehouses:'' }).font = {bold:true};
         const buf = await wb.xlsx.writeBuffer();
         await ctx.replyWithDocument({ source: Buffer.from(buf), filename: `dolgi_${daysAgo}d_${year}.xlsx` });
-    } catch (e) { ctx.reply(`❌ Ошибка: ${e.message}`); }
+    } catch (e) { handleApiError(ctx, userId, e); }
 });
 
 // ─── Топ должников ────────────────────────────────────────────────────────────
@@ -1166,7 +1179,7 @@ bot.hears(/^👥 Топ должников$|^топ должников$/i, async
         let msg = `👥 *ТОП-10 ДОЛЖНИКОВ*\n📅 Год: *${getUserYear(userId)}*\n${'═'.repeat(25)}\n\n`;
         top.forEach(([c,d],i) => { msg += `${i+1}. *${escMd(c)}*\n   Долг: *${formatNumber(d.debt)} $*\n\n`; });
         await sendMd(ctx, msg);
-    } catch (e) { ctx.reply(`❌ Ошибка: ${e.message}`); }
+    } catch (e) { handleApiError(ctx, userId, e); }
 });
 
 // ─── Итоги вагонов ────────────────────────────────────────────────────────────
@@ -1184,7 +1197,7 @@ bot.hears(/🚂|итоги вагонов/i, async (ctx) => {
         });
         msg += `${'═'.repeat(25)}\n📊 *Итого:*\n   Вагонов: *${totals.wagons}*\n   По документу: *${formatNumber(totals.qtyDoc/20)} т*\n   Фактически: *${formatNumber(totals.qtyFact/20)} т*\n   Разница: *${formatNumber(totals.difference/20)} т*`;
         await sendLong(ctx, msg);
-    } catch (e) { ctx.reply(`❌ Ошибка: ${e.message}`); }
+    } catch (e) { handleApiError(ctx, userId, e); }
 });
 
 // ─── Отчёт по товарам (тонны / сумма / средняя цена) ─────────────────────────
@@ -1204,7 +1217,7 @@ bot.hears(/📊 Отчёт по товарам/i, async (ctx) => {
         saveSessions();
 
         await showProductSelectMenu(ctx, userId);
-    } catch (e) { ctx.reply(`❌ Ошибка: ${e.message}`); }
+    } catch (e) { handleApiError(ctx, userId, e); }
 });
 
 const showProductSelectMenu = async (ctx, userId, edit = false) => {
@@ -1326,7 +1339,7 @@ const showProductReportResult = async (ctx, userId) => {
             [Markup.button.callback('🔙 Изменить выбор', 'exprod_back')]
         ]);
         await sendLong(ctx, msg, kb);
-    } catch (e) { ctx.reply(`❌ Ошибка: ${e.message}`); }
+    } catch (e) { handleApiError(ctx, userId, e); }
 };
 
 bot.action('exprod_back', async (ctx) => {
@@ -1369,7 +1382,7 @@ bot.action('exprod_excel', async (ctx) => {
 
         const buf = await wb.xlsx.writeBuffer();
         await ctx.replyWithDocument({ source: Buffer.from(buf), filename: `tovary_${year}.xlsx` });
-    } catch (e) { ctx.reply(`❌ Ошибка: ${e.message}`); }
+    } catch (e) { handleApiError(ctx, userId, e); }
 });
 
 // ─── Карточка клиента (выбор из списка как в старом боте) ─────────────────────
@@ -1423,7 +1436,7 @@ bot.hears(/^👤 Карточка клиента$|^карточка клиент
         sessions[userId].clientsList = clientNames;
         saveSessions();
         await sendClientPage(ctx, userId, 0);
-    } catch (e) { ctx.reply(`❌ Ошибка: ${e.message}`); }
+    } catch (e) { handleApiError(ctx, userId, e); }
 });
 
 bot.action(/^cl_page_(\d+)$/, async (ctx) => {
@@ -1470,7 +1483,7 @@ bot.action(/^cl_(\d+)$/, async (ctx) => {
         saveSessions();
         const exportBtn = Markup.inlineKeyboard([[Markup.button.callback('📊 Экспорт в Excel', `excl_${idx}`)]]);
         await sendLong(ctx, msg, exportBtn);
-    } catch (e) { ctx.reply(`❌ Ошибка: ${e.message}`); }
+    } catch (e) { handleApiError(ctx, userId, e); }
 });
 
 bot.action(/^excl_(\d+)$/, async (ctx) => {
@@ -1512,7 +1525,7 @@ bot.action(/^excl_(\d+)$/, async (ctx) => {
         card.payments.forEach((p,i) => ws3.addRow({num:i+1,date:p.date,amount:p.amount,note:p.note||''}));
         const buf = await wb.xlsx.writeBuffer();
         await ctx.replyWithDocument({ source: Buffer.from(buf), filename: `klient_${clientName.replace(/[^a-zA-Zа-яА-Я0-9]/g,'_')}.xlsx` });
-    } catch (e) { ctx.reply(`❌ Ошибка: ${e.message}`); }
+    } catch (e) { handleApiError(ctx, userId, e); }
 });
 
 // ─── Управление (только admin) ────────────────────────────────────────────────
@@ -1542,7 +1555,7 @@ bot.hears(/^👥 Пользователи$/, async (ctx) => {
         });
         msg += `${'═'.repeat(25)}\n📊 Всего: *${users.length}* пользователей`;
         await sendLong(ctx, msg);
-    } catch (e) { ctx.reply(`❌ Ошибка: ${e.message}`); }
+    } catch (e) { handleApiError(ctx, userId, e); }
 });
 
 bot.hears(/📦 Товары/i, async (ctx) => {
@@ -1557,7 +1570,7 @@ bot.hears(/📦 Товары/i, async (ctx) => {
         else products.forEach((p,i) => { msg += `${i+1}. ${escMd(p.name)}\n`; });
         msg += `\n${'═'.repeat(25)}\n📊 Всего: *${products.length}* товаров`;
         await sendLong(ctx, msg, Markup.inlineKeyboard([[Markup.button.callback('➕ Добавить товар','add_product')]]));
-    } catch (e) { ctx.reply(`❌ Ошибка: ${e.message}`); }
+    } catch (e) { handleApiError(ctx, userId, e); }
 });
 
 bot.action('add_product', async (ctx) => {
@@ -1580,7 +1593,7 @@ bot.hears(/🏢 Фирмы/i, async (ctx) => {
         else companies.forEach((c,i) => { msg += `${i+1}. ${escMd(c.name)}\n`; });
         msg += `\n${'═'.repeat(25)}\n📊 Всего: *${companies.length}* фирм`;
         await sendLong(ctx, msg, Markup.inlineKeyboard([[Markup.button.callback('➕ Добавить фирму','add_company')]]));
-    } catch (e) { ctx.reply(`❌ Ошибка: ${e.message}`); }
+    } catch (e) { handleApiError(ctx, userId, e); }
 });
 
 bot.action('add_company', async (ctx) => {
@@ -1609,7 +1622,7 @@ bot.hears(/🏪 Склады/i, async (ctx) => {
         });
         msg += `${'═'.repeat(25)}\n📊 Всего: *${warehouses.length}* складов`;
         await sendLong(ctx, msg);
-    } catch (e) { ctx.reply(`❌ Ошибка: ${e.message}`); }
+    } catch (e) { handleApiError(ctx, userId, e); }
 });
 
 bot.hears(/^👤 Клиенты$/, async (ctx) => {
@@ -1624,7 +1637,7 @@ bot.hears(/^👤 Клиенты$/, async (ctx) => {
         else clients.forEach((c,i) => { msg += `${i+1}. ${escMd(c.name)}${c.phone?` — ${escMd(c.phone)}`:''}\n`; });
         msg += `\n${'═'.repeat(25)}\n📊 Всего: *${clients.length}* клиентов`;
         await sendLong(ctx, msg, Markup.inlineKeyboard([[Markup.button.callback('➕ Добавить клиента','add_client')]]));
-    } catch (e) { ctx.reply(`❌ Ошибка: ${e.message}`); }
+    } catch (e) { handleApiError(ctx, userId, e); }
 });
 
 bot.action('add_client', async (ctx) => {
@@ -1658,7 +1671,7 @@ bot.hears(/📅 Годы/i, async (ctx) => {
         years.forEach(y => { msg += `📅 *${y}*\n`; });
         msg += `\n${'═'.repeat(25)}\n📊 Всего: *${years.length}* годов`;
         await sendMd(ctx, msg);
-    } catch (e) { ctx.reply(`❌ Ошибка: ${e.message}`); }
+    } catch (e) { handleApiError(ctx, userId, e); }
 });
 
 // Цены
@@ -1687,7 +1700,7 @@ bot.hears(/💰 Цены/i, async (ctx) => {
             [Markup.button.callback('➕ Установить цену','price_add')],
             [Markup.button.callback('📋 История цен','price_history')]
         ]));
-    } catch (e) { ctx.reply(`❌ Ошибка: ${e.message}`); }
+    } catch (e) { handleApiError(ctx, userId, e); }
 });
 
 bot.action('price_add', async (ctx) => {
@@ -1798,7 +1811,7 @@ bot.action('price_history', async (ctx) => {
         });
         if (prices.length > 20) msg += `_...и ещё ${prices.length-20} записей_`;
         await sendLong(ctx, msg);
-    } catch (e) { ctx.reply(`❌ Ошибка: ${e.message}`); }
+    } catch (e) { handleApiError(ctx, userId, e); }
 });
 
 // ─── Text handler для управления ─────────────────────────────────────────────
