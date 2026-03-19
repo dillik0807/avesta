@@ -470,8 +470,7 @@ bot.hears('📦 Остатки складов', async (ctx) => {
     const year = getUserYear(userId);
     await ctx.reply('⏳ Загрузка...');
     try {
-        const rawData = await getData(userId);
-        const data = filterByWarehouseGroup(rawData, userId);
+        const data = await getDataAll(userId);
         const stock = calcStock(data);
         if (!Object.keys(stock).length) return ctx.reply(`📦 Нет данных об остатках за ${year} год`);
 
@@ -499,8 +498,7 @@ bot.hears('🏭 Фактический остаток', async (ctx) => {
     const year = getUserYear(userId);
     await ctx.reply('⏳ Загрузка фактических остатков...');
     try {
-        const rawData = await getData(userId);
-        const data = filterByWarehouseGroup(rawData, userId);
+        const data = await getDataAll(userId);
         const { warehouses, productTotals } = calcFactBalance(data);
         if (!Object.keys(warehouses).length) return ctx.reply(`🏭 Нет данных о фактических остатках за ${year} год`);
 
@@ -608,7 +606,7 @@ bot.hears('📊 Сводка', async (ctx) => {
     const userId = ctx.from.id;
     await ctx.reply('⏳ Загрузка...');
     try {
-        const data = await getData(userId);
+        const data = await getDataAll(userId);
         const year = getUserYear(userId);
         const tInc  = (data.income||[]).reduce((s,i) => s + (parseFloat(i.qty_fact)||0)/20, 0);
         const tExp  = (data.expense||[]).reduce((s,e) => s + (parseFloat(e.tons)||0), 0);
@@ -662,7 +660,7 @@ bot.action(/^daily_(today|yesterday|2days)$/, async (ctx) => {
 const showDailyReport = async (ctx, userId, date, dateName = '') => {
     await ctx.reply('⏳ Загрузка...');
     try {
-        const data = await getData(userId);
+        const data = await getDataAll(userId);
         const income  = (data.income||[]).filter(i => i.date === date);
         const expense = (data.expense||[]).filter(e => e.date === date);
         const expSum  = expense.reduce((s,e) => s + (parseFloat(e.total)||0), 0);
@@ -857,7 +855,7 @@ bot.hears(/📈|приход за период/i, async (ctx) => {
     const year = getUserYear(userId);
     await ctx.reply('⏳ Загрузка...');
     try {
-        const data = await getData(userId);
+        const data = await getDataAll(userId);
         const income = data.income||[];
         const byMonth = {};
         income.forEach(i => {
@@ -886,7 +884,7 @@ bot.action(/^incdet_(today|yesterday|week|month|year)$/, async (ctx) => {
     const pType = ctx.match[1];
     await ctx.answerCbQuery('⏳ Загрузка...');
     try {
-        const data = await getData(userId);
+        const data = await getDataAll(userId);
         const filtered = filterByPeriod(data.income||[], 'date', pType);
         if (!filtered.length) return ctx.reply(`📈 Прихода за период "${periodName(pType)}" нет.`);
         const tTons = filtered.reduce((s,i) => s + (parseFloat(i.qty_fact)||0)/20, 0);
@@ -930,7 +928,7 @@ bot.hears(/📉|расход за период/i, async (ctx) => {
     const year = getUserYear(userId);
     await ctx.reply('⏳ Загрузка...');
     try {
-        const data = await getData(userId);
+        const data = await getDataAll(userId);
         const expense = data.expense||[];
         const byMonth = {};
         expense.forEach(e => {
@@ -959,7 +957,7 @@ bot.action(/^expdet_(today|yesterday|week|month|year)$/, async (ctx) => {
     const pType = ctx.match[1];
     await ctx.answerCbQuery('⏳ Загрузка...');
     try {
-        const data = await getData(userId);
+        const data = await getDataAll(userId);
         const filtered = filterByPeriod(data.expense||[], 'date', pType);
         if (!filtered.length) return ctx.reply(`📉 Расходов за период "${periodName(pType)}" нет.`);
         const tTons = filtered.reduce((s,e) => s + (parseFloat(e.tons)||0), 0);
@@ -1003,7 +1001,7 @@ bot.hears(/💵|погашения за период/i, async (ctx) => {
     const year = getUserYear(userId);
     await ctx.reply('⏳ Загрузка...');
     try {
-        const data = await getData(userId);
+        const data = await getDataAll(userId);
         const payments = data.payments||[];
         const byMonth = {};
         payments.forEach(p => {
@@ -1032,7 +1030,7 @@ bot.action(/^paydet_(today|yesterday|week|month|year)$/, async (ctx) => {
     const pType = ctx.match[1];
     await ctx.answerCbQuery('⏳ Загрузка...');
     try {
-        const data = await getData(userId);
+        const data = await getDataAll(userId);
         const filtered = filterByPeriod(data.payments||[], 'date', pType);
         if (!filtered.length) return ctx.reply(`💵 Погашений за период "${periodName(pType)}" нет.`);
         const tSum = filtered.reduce((s,p) => s + (parseFloat(p.amount)||0), 0);
@@ -1187,7 +1185,7 @@ bot.hears(/🚂|итоги вагонов/i, async (ctx) => {
     const userId = ctx.from.id;
     await ctx.reply('⏳ Загрузка...');
     try {
-        const data = await getData(userId);
+        const data = await getDataAll(userId);
         const { items, totals } = calcWagonTotals(data);
         if (!items.length) return ctx.reply('🚂 Данных нет.');
         let msg = `🚂 *ИТОГИ ВАГОНОВ*\n📅 Год: *${getUserYear(userId)}*\n${'═'.repeat(25)}\n\n`;
