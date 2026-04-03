@@ -8,6 +8,22 @@ const { authenticateToken } = require('./auth');
 
 const router = express.Router();
 
+// Проверка даты для завсклада: только вчера, сегодня, завтра
+const checkDateForWarehouse = (req, res, next) => {
+    if (req.user.role !== 'warehouse') return next();
+    const date = req.body.date;
+    if (!date) return next();
+    const d = new Date(date);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const yesterday = new Date(today); yesterday.setDate(today.getDate() - 1);
+    const tomorrow  = new Date(today); tomorrow.setDate(today.getDate() + 1);
+    if (d < yesterday || d > tomorrow) {
+        return res.status(403).json({ error: 'Завсклад может вводить данные только за вчера, сегодня или завтра' });
+    }
+    next();
+};
+
 // Получить все записи прихода
 router.get('/', authenticateToken, async (req, res) => {
     try {
@@ -36,7 +52,7 @@ router.get('/', authenticateToken, async (req, res) => {
 });
 
 // Добавить приход
-router.post('/', authenticateToken, async (req, res) => {
+router.post('/', authenticateToken, checkDateForWarehouse, async (req, res) => {
     const client = await db.getClient();
     
     try {
@@ -122,7 +138,7 @@ router.post('/', authenticateToken, async (req, res) => {
 });
 
 // Обновить приход
-router.put('/:id', authenticateToken, async (req, res) => {
+router.put('/:id', authenticateToken, checkDateForWarehouse, async (req, res) => {
     const client = await db.getClient();
     
     try {
