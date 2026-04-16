@@ -2052,6 +2052,49 @@
                     </div>
                 </div>
 
+                <!-- Средняя цена Коалиция -->
+                <div id="coalition-price-report" class="content-section">
+                    <div class="mb-4">
+                        <button id="backToReportsFromCoalitionBtn" class="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600">
+                            ← Назад к списку отчетов
+                        </button>
+                    </div>
+                    <h1 class="text-3xl font-bold mb-6">💹 Средняя цена Коалиция</h1>
+
+                    <!-- Фильтры -->
+                    <div class="bg-white p-6 rounded-lg shadow mb-6">
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium mb-2">Коалиция</label>
+                                <select id="coalitionPriceFilter" class="w-full p-2 border rounded">
+                                    <option value="">Все коалиции</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium mb-2">Товар</label>
+                                <select id="coalitionProductFilter" class="w-full p-2 border rounded">
+                                    <option value="">Все товары</option>
+                                </select>
+                            </div>
+                            <div class="flex items-end gap-2">
+                                <button onclick="generateCoalitionPriceReport()" class="flex-1 bg-yellow-600 text-white px-4 py-2 rounded hover:bg-yellow-700">
+                                    📊 Сформировать
+                                </button>
+                                <button onclick="exportCoalitionPriceToExcel()" class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">
+                                    📊 Excel
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Результаты -->
+                    <div id="coalitionPriceResults">
+                        <div class="p-8 text-center text-gray-500">
+                            <p class="text-lg">Нажмите "Сформировать" для просмотра отчёта</p>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Итоги Вагонов -->
                 <div id="wagon-totals" class="content-section">
                     <div class="flex justify-between items-center mb-6">
@@ -2192,6 +2235,9 @@
                         </button>
                         <button class="report-btn bg-rose-600 text-white p-4 rounded hover:bg-rose-700" data-report="client-card">
                             📇 Карточка клиента
+                        </button>
+                        <button class="report-btn bg-yellow-600 text-white p-4 rounded hover:bg-yellow-700" data-report="coalition-price-report">
+                            💹 Средняя цена Коалиция
                         </button>
                     </div>
 

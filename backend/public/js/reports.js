@@ -850,6 +850,16 @@ window.initReportButtons = function() {
             if (reportsSection) reportsSection.classList.add('active');
         });
     }
+
+    // Обработчик кнопки "Назад" для отчёта Средняя цена Коалиция
+    const backCoalitionBtn = document.getElementById('backToReportsFromCoalitionBtn');
+    if (backCoalitionBtn) {
+        backCoalitionBtn.addEventListener('click', function() {
+            const coalitionSection = document.getElementById('coalition-price-report');
+            if (coalitionSection) coalitionSection.classList.remove('active');
+            if (reportsSection) reportsSection.classList.add('active');
+        });
+    }
     
     reportButtons.forEach(btn => {
         btn.addEventListener('click', function() {
@@ -921,6 +931,16 @@ window.initReportButtons = function() {
                     clientCardSection.classList.add('active');
                     if (typeof window.initClientCard === 'function') {
                         window.initClientCard();
+                    }
+                }
+            }
+            // Обработка отчёта Средняя цена Коалиция
+            else if (reportType === 'coalition-price-report') {
+                const coalitionSection = document.getElementById('coalition-price-report');
+                if (coalitionSection) {
+                    coalitionSection.classList.add('active');
+                    if (typeof window.initCoalitionPriceReport === 'function') {
+                        window.initCoalitionPriceReport();
                     }
                 }
             }
@@ -1149,4 +1169,204 @@ function _exportClientCardExcel(clientName, expenses, payments) {
     const ws = XLSX.utils.aoa_to_sheet(rows);
     XLSX.utils.book_append_sheet(wb, ws, clientName.substring(0, 31));
     XLSX.writeFile(wb, `Карточка_${clientName}_${new Date().toISOString().split('T')[0]}.xlsx`);
+};
+
+// ========================================
+// 💹 ОТЧЁТ: СРЕДНЯЯ ЦЕНА КОАЛИЦИЯ
+// ========================================
+
+window.initCoalitionPriceReport = function() {
+    const yearData = window.getCurrentYearData();
+    if (!yearData) return;
+
+    const expense = (yearData.expense || []).filter(e => !e.deleted);
+
+    // Заполняем фильтр коалиций
+    const coalitionSelect = document.getElementById('coalitionPriceFilter');
+    const productSelect   = document.getElementById('coalitionProductFilter');
+    if (!coalitionSelect || !productSelect) return;
+
+    const coalitions = [...new Set(expense.map(e => e.coalition).filter(Boolean))].sort();
+    const products   = [...new Set(expense.map(e => e.product).filter(Boolean))].sort();
+
+    coalitionSelect.innerHTML = '<option value="">Все коалиции</option>';
+    coalitions.forEach(c => {
+        const opt = document.createElement('option');
+        opt.value = c; opt.textContent = c;
+        coalitionSelect.appendChild(opt);
+    });
+
+    productSelect.innerHTML = '<option value="">Все товары</option>';
+    products.forEach(p => {
+        const opt = document.createElement('option');
+        opt.value = p; opt.textContent = p;
+        productSelect.appendChild(opt);
+    });
+};
+
+window.generateCoalitionPriceReport = function() {
+    const yearData = window.getCurrentYearData();
+    const resultsDiv = document.getElementById('coalitionPriceResults');
+    if (!yearData || !resultsDiv) return;
+
+    const filterCoalition = document.getElementById('coalitionPriceFilter')?.value || '';
+    const filterProduct   = document.getElementById('coalitionProductFilter')?.value || '';
+    const year = window.currentYear;
+
+    const expense = (yearData.expense || []).filter(e => {
+        if (e.deleted) return false;
+        if (filterCoalition && e.coalition !== filterCoalition) return false;
+        if (filterProduct   && e.product   !== filterProduct)   return false;
+        return true;
+    });
+
+    if (!expense.length) {
+        resultsDiv.innerHTML = '<div class="p-8 text-center text-gray-500">Нет данных по выбранным фильтрам</div>';
+        return;
+    }
+
+    // Группируем: coalition → product → price → { tons, sum }
+    const grouped = {};
+    expense.forEach(e => {
+        const coalition = e.coalition || 'Без коалиции';
+        const product   = e.product   || 'Без товара';
+        const price     = parseFloat(e.price)    || 0;
+        const tons      = parseFloat(e.tons)     || 0;
+        const total     = parseFloat(e.total)    || 0;
+
+        if (!grouped[coalition]) grouped[coalition] = {};
+        if (!grouped[coalition][product]) grouped[coalition][product] = {};
+        if (!grouped[coalition][product][price]) grouped[coalition][product][price] = { tons: 0, sum: 0 };
+        grouped[coalition][product][price].tons += tons;
+        grouped[coalition][product][price].sum  += total;
+    });
+
+    // Сохраняем для Excel
+    window._coalitionPriceReportData = { grouped, year };
+
+    // Строим HTML таблицу
+    let html = `
+        <div class="bg-white rounded-lg shadow overflow-x-auto">
+            <table class="w-full text-sm">
+                <thead>
+                    <tr class="bg-yellow-400 font-bold">
+                        <th class="p-3 text-left" colspan="2">Коалиция Реализация ${year}</th>
+                        <th class="p-3 text-right">Тонна</th>
+                        <th class="p-3 text-right">Цена ($)</th>
+                        <th class="p-3 text-right">Сумма ($)</th>
+                    </tr>
+                </thead>
+                <tbody>`;
+
+    let grandTons = 0, grandSum = 0;
+
+    Object.entries(grouped).sort().forEach(([coalition, products]) => {
+        let coalTons = 0, coalSum = 0;
+
+        Object.entries(products).sort().forEach(([product, prices]) => {
+            let prodTons = 0, prodSum = 0;
+            let firstRow = true;
+
+            const priceRows = Object.entries(prices)
+                .map(([p, d]) => ({ price: parseFloat(p), ...d }))
+                .sort((a, b) => a.price - b.price);
+
+            priceRows.forEach(({ price, tons, sum }) => {
+                html += `<tr class="hover:bg-gray-50 border-b">
+                    <td class="p-2 bg-red-100 font-medium" style="width:140px">${firstRow ? coalition : ''}</td>
+                    <td class="p-2 bg-red-50">${firstRow ? product : ''}</td>
+                    <td class="p-2 text-right">${tons.toLocaleString('ru-RU', {minimumFractionDigits:2, maximumFractionDigits:2})}</td>
+                    <td class="p-2 text-right">$&nbsp;${price.toLocaleString('ru-RU', {minimumFractionDigits:2, maximumFractionDigits:2})}</td>
+                    <td class="p-2 text-right">$&nbsp;${sum.toLocaleString('ru-RU', {minimumFractionDigits:2, maximumFractionDigits:2})}</td>
+                </tr>`;
+                firstRow = false;
+                prodTons += tons; prodSum += sum;
+            });
+
+            const prodAvg = prodTons > 0 ? prodSum / prodTons : 0;
+            html += `<tr class="bg-green-500 text-white font-bold border-b-2">
+                <td class="p-2" colspan="2"></td>
+                <td class="p-2 text-right">${prodTons.toLocaleString('ru-RU', {minimumFractionDigits:2, maximumFractionDigits:2})}</td>
+                <td class="p-2 text-right">$&nbsp;${prodAvg.toLocaleString('ru-RU', {minimumFractionDigits:2, maximumFractionDigits:2})}</td>
+                <td class="p-2 text-right">$&nbsp;${prodSum.toLocaleString('ru-RU', {minimumFractionDigits:2, maximumFractionDigits:2})}</td>
+            </tr><tr><td colspan="5" class="py-1"></td></tr>`;
+
+            coalTons += prodTons; coalSum += prodSum;
+        });
+
+        const coalAvg = coalTons > 0 ? coalSum / coalTons : 0;
+        html += `<tr class="bg-green-600 text-white font-bold border-b-2">
+            <td class="p-2 font-bold">${coalition}</td>
+            <td class="p-2"></td>
+            <td class="p-2 text-right">${coalTons.toLocaleString('ru-RU', {minimumFractionDigits:2, maximumFractionDigits:2})}</td>
+            <td class="p-2 text-right">$&nbsp;${coalAvg.toLocaleString('ru-RU', {minimumFractionDigits:2, maximumFractionDigits:2})}</td>
+            <td class="p-2 text-right">$&nbsp;${coalSum.toLocaleString('ru-RU', {minimumFractionDigits:2, maximumFractionDigits:2})}</td>
+        </tr><tr><td colspan="5" class="py-2"></td></tr>`;
+
+        grandTons += coalTons; grandSum += coalSum;
+    });
+
+    const grandAvg = grandTons > 0 ? grandSum / grandTons : 0;
+    html += `</tbody>
+        <tfoot>
+            <tr class="bg-green-200 font-bold text-base border-t-2 border-green-600">
+                <td class="p-3" colspan="2">ИТОГО</td>
+                <td class="p-3 text-right">${grandTons.toLocaleString('ru-RU', {minimumFractionDigits:2, maximumFractionDigits:2})}</td>
+                <td class="p-3 text-right">$&nbsp;${grandAvg.toLocaleString('ru-RU', {minimumFractionDigits:2, maximumFractionDigits:2})}</td>
+                <td class="p-3 text-right">$&nbsp;${grandSum.toLocaleString('ru-RU', {minimumFractionDigits:2, maximumFractionDigits:2})}</td>
+            </tr>
+        </tfoot>
+    </table></div>`;
+
+    resultsDiv.innerHTML = html;
+};
+
+window.exportCoalitionPriceToExcel = function() {
+    const d = window._coalitionPriceReportData;
+    if (!d) { alert('Сначала сформируйте отчёт'); return; }
+    const { grouped, year } = d;
+
+    const rows = [['', 'тонна', 'цена', 'сумма', 'остаток']];
+    let grandTons = 0, grandSum = 0;
+
+    Object.entries(grouped).sort().forEach(([coalition, products]) => {
+        let coalTons = 0, coalSum = 0;
+
+        Object.entries(products).sort().forEach(([product, prices]) => {
+            let prodTons = 0, prodSum = 0;
+            let firstRow = true;
+
+            Object.entries(prices)
+                .map(([p, d]) => ({ price: parseFloat(p), ...d }))
+                .sort((a, b) => a.price - b.price)
+                .forEach(({ price, tons, sum }) => {
+                    rows.push([firstRow ? product : '', tons, price, sum, '']);
+                    firstRow = false;
+                    prodTons += tons; prodSum += sum;
+                });
+
+            const prodAvg = prodTons > 0 ? prodSum / prodTons : 0;
+            rows.push(['', prodTons, prodAvg, prodSum, '']);
+            coalTons += prodTons; coalSum += prodSum;
+        });
+
+        const coalAvg = coalTons > 0 ? coalSum / coalTons : 0;
+        rows.push([coalition, coalTons, coalAvg, coalSum, 0]);
+        rows.push([]);
+        grandTons += coalTons; grandSum += coalSum;
+    });
+
+    const grandAvg = grandTons > 0 ? grandSum / grandTons : 0;
+    rows.push(['итого', grandTons, grandAvg, grandSum, '']);
+
+    const ws = XLSX.utils.aoa_to_sheet([
+        [`Коалиция Реализация ${year}`],
+        [],
+        ...rows
+    ]);
+    ws['!cols'] = [{wch:22},{wch:14},{wch:14},{wch:18},{wch:12}];
+
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Средняя цена Коалиция');
+    XLSX.writeFile(wb, `Srednyaya_cena_${year}.xlsx`);
 };
