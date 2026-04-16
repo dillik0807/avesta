@@ -1398,83 +1398,122 @@ bot.action('exprod_excel', async (ctx) => {
 bot.hears(/💹 Средняя цена Коалиция/i, async (ctx) => {
     const userId = ctx.from.id;
     const year = getUserYear(userId);
-    await ctx.reply('⏳ Загрузка...');
+    await ctx.reply('⏳ Загрузка коалиций...');
     try {
         const data = await getDataAll(userId);
         const expense = data.expense || [];
-
         if (!expense.length) return ctx.reply('❌ Нет данных о расходах');
 
-        // Группируем: coalition → product → price → { tons, sum }
-        const grouped = {};
-        expense.forEach(e => {
-            const coalition = e.coalition || 'Без коалиции';
-            const product   = e.product   || 'Без товара';
-            const price     = parseFloat(e.price) || 0;
-            const tons      = parseFloat(e.tons)  || 0;
-            const total     = parseFloat(e.total) || 0;
+        // Собираем уникальные коалиции
+        const coalitionSet = new Set();
+        expense.forEach(e => { if (e.coalition) coalitionSet.add(e.coalition); });
+        const coalitions = [...coalitionSet].sort();
+        if (!coalitions.length) return ctx.reply('❌ Нет данных о коалициях');
 
-            if (!grouped[coalition]) grouped[coalition] = {};
-            if (!grouped[coalition][product]) grouped[coalition][product] = {};
-            if (!grouped[coalition][product][price]) grouped[coalition][product][price] = { tons: 0, sum: 0 };
-
-            grouped[coalition][product][price].tons += tons;
-            grouped[coalition][product][price].sum  += total;
-        });
-
-        let msg = `💹 *СРЕДНЯЯ ЦЕНА КОАЛИЦИЯ*\n📅 Год: *${year}*\n${'═'.repeat(30)}\n\n`;
-
-        let grandTons = 0, grandSum = 0;
-
-        Object.entries(grouped).sort().forEach(([coalition, products]) => {
-            msg += `🏷 *${escMd(coalition)}*\n`;
-            msg += `${'─'.repeat(28)}\n`;
-            msg += `_тонна       цена          сумма_\n`;
-
-            let coalTons = 0, coalSum = 0;
-
-            Object.entries(products).sort().forEach(([product, prices]) => {
-                msg += `📦 *${escMd(product)}*\n`;
-
-                let prodTons = 0, prodSum = 0;
-
-                Object.entries(prices)
-                    .map(([p, d]) => ({ price: parseFloat(p), ...d }))
-                    .sort((a, b) => a.price - b.price)
-                    .forEach(({ price, tons, sum }) => {
-                        msg += `  ${formatNumber(tons).padStart(9)} × $${formatNumber(price).padStart(8)} = $${formatNumber(sum).padStart(14)}\n`;
-                        prodTons += tons;
-                        prodSum  += sum;
-                    });
-
-                const prodAvg = prodTons > 0 ? prodSum / prodTons : 0;
-                msg += `  ${'─'.repeat(26)}\n`;
-                msg += `  *${formatNumber(prodTons).padStart(9)} × $${formatNumber(prodAvg).padStart(8)} = $${formatNumber(prodSum).padStart(14)}*\n\n`;
-
-                coalTons += prodTons;
-                coalSum  += prodSum;
-            });
-
-            const coalAvg = coalTons > 0 ? coalSum / coalTons : 0;
-            msg += `📊 *Итого ${escMd(coalition)}:*\n`;
-            msg += `  *${formatNumber(coalTons)} т × $${formatNumber(coalAvg)} = $${formatNumber(coalSum)}*\n\n`;
-
-            grandTons += coalTons;
-            grandSum  += coalSum;
-        });
-
-        const grandAvg = grandTons > 0 ? grandSum / grandTons : 0;
-        msg += `${'═'.repeat(30)}\n`;
-        msg += `🏆 *ИТОГО:*\n`;
-        msg += `  *${formatNumber(grandTons)} т × $${formatNumber(grandAvg)} = $${formatNumber(grandSum)}*`;
-
-        // Сохраняем для Excel
-        sessions[userId].lastCoalitionReport = { grouped, grandTons, grandSum, grandAvg, year };
+        sessions[userId].coalitionReportData = { expense, year };
         saveSessions();
 
-        const kb = Markup.inlineKeyboard([[Markup.button.callback('📊 Экспорт в Excel', 'excoalition')]]);
-        await sendLong(ctx, msg, kb);
+        const buttons = coalitions.map(c => [Markup.button.callback(`🏷 ${c}`, `coal_${c}`)]);
+        buttons.push([Markup.button.callback('📊 Все коалиции', 'coal_ALL')]);
+
+        await ctx.reply(
+            `💹 *СРЕДНЯЯ ЦЕНА КОАЛИЦИЯ*\n📅 Год: *${year}*\n\nВыберите коалицию:`,
+            { parse_mode: 'Markdown', ...Markup.inlineKeyboard(buttons) }
+        );
     } catch (e) { handleApiError(ctx, userId, e); }
+});
+
+const buildCoalitionGrouped = (expense, filterCoalition) => {
+    const grouped = {};
+    expense.forEach(e => {
+        const coalition = e.coalition || 'Без коалиции';
+        if (filterCoalition && filterCoalition !== 'ALL' && coalition !== filterCoalition) return;
+        const product = e.product || 'Без товара';
+        const price   = parseFloat(e.price) || 0;
+        const tons    = parseFloat(e.tons)  || 0;
+        const total   = parseFloat(e.total) || 0;
+        if (!grouped[coalition]) grouped[coalition] = {};
+        if (!grouped[coalition][product]) grouped[coalition][product] = {};
+        if (!grouped[coalition][product][price]) grouped[coalition][product][price] = { tons: 0, sum: 0 };
+        grouped[coalition][product][price].tons += tons;
+        grouped[coalition][product][price].sum  += total;
+    });
+    return grouped;
+};
+
+const sendCoalitionReport = async (ctx, userId, filterCoalition) => {
+    const s = getSession(userId);
+    const { expense, year } = s.coalitionReportData || {};
+    if (!expense) return ctx.reply('❌ Данные устарели, нажмите 💹 Средняя цена Коалиция снова');
+
+    const grouped = buildCoalitionGrouped(expense, filterCoalition);
+    if (!Object.keys(grouped).length) return ctx.reply('❌ Нет данных по выбранной коалиции');
+
+    const title = filterCoalition === 'ALL' ? 'ВСЕ КОАЛИЦИИ' : filterCoalition;
+    let msg = `💹 *СРЕДНЯЯ ЦЕНА — ${escMd(title)}*\n📅 Год: *${year}*\n${'═'.repeat(30)}\n\n`;
+    let grandTons = 0, grandSum = 0;
+
+    Object.entries(grouped).sort().forEach(([coalition, products]) => {
+        msg += `🏷 *${escMd(coalition)}*\n${'─'.repeat(28)}\n`;
+        let coalTons = 0, coalSum = 0;
+
+        Object.entries(products).sort().forEach(([product, prices]) => {
+            msg += `📦 *${escMd(product)}*\n`;
+            let prodTons = 0, prodSum = 0;
+
+            Object.entries(prices)
+                .map(([p, d]) => ({ price: parseFloat(p), ...d }))
+                .sort((a, b) => a.price - b.price)
+                .forEach(({ price, tons, sum }) => {
+                    msg += `  ${formatNumber(tons)} т × $${formatNumber(price)} = $${formatNumber(sum)}\n`;
+                    prodTons += tons; prodSum += sum;
+                });
+
+            const prodAvg = prodTons > 0 ? prodSum / prodTons : 0;
+            msg += `  ${'─'.repeat(24)}\n`;
+            msg += `  *${formatNumber(prodTons)} т × $${formatNumber(prodAvg)} = $${formatNumber(prodSum)}*\n\n`;
+            coalTons += prodTons; coalSum += prodSum;
+        });
+
+        const coalAvg = coalTons > 0 ? coalSum / coalTons : 0;
+        msg += `📊 *Итого ${escMd(coalition)}:*\n`;
+        msg += `  *${formatNumber(coalTons)} т × $${formatNumber(coalAvg)} = $${formatNumber(coalSum)}*\n\n`;
+        grandTons += coalTons; grandSum += coalSum;
+    });
+
+    const grandAvg = grandTons > 0 ? grandSum / grandTons : 0;
+    msg += `${'═'.repeat(30)}\n🏆 *ИТОГО: ${formatNumber(grandTons)} т × $${formatNumber(grandAvg)} = $${formatNumber(grandSum)}*`;
+
+    sessions[userId].lastCoalitionReport = { grouped, grandTons, grandSum, grandAvg, year, filterCoalition };
+    saveSessions();
+
+    const kb = Markup.inlineKeyboard([
+        [Markup.button.callback('📊 Экспорт в Excel', 'excoalition')],
+        [Markup.button.callback('🔙 Выбрать другую', 'coal_back')]
+    ]);
+    await sendLong(ctx, msg, kb);
+};
+
+bot.action(/^coal_(.+)$/, async (ctx) => {
+    const userId = ctx.from.id;
+    const val = ctx.match[1];
+    if (val === 'back') {
+        await ctx.answerCbQuery();
+        const s = getSession(userId);
+        const { expense, year } = s.coalitionReportData || {};
+        if (!expense) return ctx.reply('❌ Данные устарели, нажмите 💹 Средняя цена Коалиция снова');
+        const coalitionSet = new Set();
+        expense.forEach(e => { if (e.coalition) coalitionSet.add(e.coalition); });
+        const coalitions = [...coalitionSet].sort();
+        const buttons = coalitions.map(c => [Markup.button.callback(`🏷 ${c}`, `coal_${c}`)]);
+        buttons.push([Markup.button.callback('📊 Все коалиции', 'coal_ALL')]);
+        return ctx.reply(
+            `💹 *СРЕДНЯЯ ЦЕНА КОАЛИЦИЯ*\n📅 Год: *${year}*\n\nВыберите коалицию:`,
+            { parse_mode: 'Markdown', ...Markup.inlineKeyboard(buttons) }
+        );
+    }
+    await ctx.answerCbQuery('⏳ Формирование...');
+    await sendCoalitionReport(ctx, userId, val);
 });
 
 bot.action('excoalition', async (ctx) => {
@@ -1482,14 +1521,14 @@ bot.action('excoalition', async (ctx) => {
     const s = getSession(userId);
     if (!s.lastCoalitionReport) return ctx.answerCbQuery('❌ Сначала сформируйте отчёт');
     await ctx.answerCbQuery('📊 Создание Excel...');
-    const { grouped, grandTons, grandSum, grandAvg, year } = s.lastCoalitionReport;
+    const { grouped, grandTons, grandSum, grandAvg, year, filterCoalition } = s.lastCoalitionReport;
     try {
         const wb = new ExcelJS.Workbook();
         const ws = wb.addWorksheet('Средняя цена Коалиция');
 
-        // Заголовок
+        const title = filterCoalition === 'ALL' ? `Коалиция Реализация ${year}` : `${filterCoalition} — ${year}`;
         ws.mergeCells('A1:E1');
-        ws.getCell('A1').value = `Коалиция Реализация ${year}`;
+        ws.getCell('A1').value = title;
         ws.getCell('A1').font = { bold: true, size: 13 };
         ws.getCell('A1').alignment = { horizontal: 'center' };
 
@@ -1498,11 +1537,11 @@ bot.action('excoalition', async (ctx) => {
         ws.getRow(2).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFC000' } };
 
         ws.columns = [
-            { key: 'label',    width: 22 },
-            { key: 'tons',     width: 14 },
-            { key: 'price',    width: 14 },
-            { key: 'sum',      width: 18 },
-            { key: 'balance',  width: 12 }
+            { key: 'label',   width: 22 },
+            { key: 'tons',    width: 14 },
+            { key: 'price',   width: 14 },
+            { key: 'sum',     width: 18 },
+            { key: 'balance', width: 12 }
         ];
 
         let rowNum = 3;
@@ -1523,51 +1562,41 @@ bot.action('excoalition', async (ctx) => {
                         row.values = [firstRow ? product : '', tons, price, sum, ''];
                         row.getCell(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFEFB4B4' } };
                         firstRow = false;
-                        prodTons += tons;
-                        prodSum  += sum;
+                        prodTons += tons; prodSum += sum;
                     });
 
-                // Итог по товару
                 const prodAvg = prodTons > 0 ? prodSum / prodTons : 0;
                 const totRow = ws.getRow(rowNum++);
                 totRow.values = ['', prodTons, prodAvg, prodSum, ''];
                 totRow.font = { bold: true };
                 totRow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF92D050' } };
-
-                coalTons += prodTons;
-                coalSum  += prodSum;
+                coalTons += prodTons; coalSum += prodSum;
             });
 
-            // Итог по коалиции
             const coalAvg = coalTons > 0 ? coalSum / coalTons : 0;
             const coalRow = ws.getRow(rowNum++);
             coalRow.values = [coalition, coalTons, coalAvg, coalSum, 0];
             coalRow.font = { bold: true };
             coalRow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF92D050' } };
-
-            ws.getRow(rowNum++).values = []; // пустая строка
-
-            grandTonsAcc += coalTons;
-            grandSumAcc  += coalSum;
+            ws.getRow(rowNum++).values = [];
+            grandTonsAcc += coalTons; grandSumAcc += coalSum;
         });
 
-        // Общий итог
         const grandAvgFinal = grandTonsAcc > 0 ? grandSumAcc / grandTonsAcc : 0;
         const grandRow = ws.getRow(rowNum++);
         grandRow.values = ['итого', grandTonsAcc, grandAvgFinal, grandSumAcc, ''];
         grandRow.font = { bold: true };
         grandRow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFCCFFCC' } };
 
-        // Форматирование чисел
-        [2, 3, 4].forEach(col => {
-            ws.getColumn(col).numFmt = '#,##0.00';
-        });
+        [2, 3, 4].forEach(col => { ws.getColumn(col).numFmt = '#,##0.00'; });
 
         const buf = await wb.xlsx.writeBuffer();
-        await ctx.replyWithDocument({ source: Buffer.from(buf), filename: `Srednyaya_cena_${year}.xlsx` });
+        const fname = filterCoalition === 'ALL'
+            ? `Srednyaya_cena_vse_${year}.xlsx`
+            : `Srednyaya_cena_${filterCoalition}_${year}.xlsx`.replace(/\s+/g, '_');
+        await ctx.replyWithDocument({ source: Buffer.from(buf), filename: fname });
     } catch (e) { handleApiError(ctx, userId, e); }
 });
-
 // ─── Карточка клиента (выбор из списка как в старом боте) ─────────────────────
 const CL_PAGE_SIZE = 50;
 
