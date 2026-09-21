@@ -582,6 +582,10 @@ function navigateToSection(sectionName) {
     if (sectionName === 'users' && typeof window.initUsersSection === 'function') {
         window.initUsersSection();
     }
+    // AI Office
+    if (sectionName === 'ai-office' && typeof AIOffice !== 'undefined') {
+        AIOffice.init();
+    }
 }
 
 // Обновление дашборда
