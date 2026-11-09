@@ -8,6 +8,7 @@
     "dev": "nodemon server.js",
     "init-db": "node scripts/init-db.js",
     "migrate": "node scripts/migrate-from-firebase.js",
+    "migrate-global-year": "node scripts/add-app-settings-table.js",
     "test-connection": "node scripts/test-connection.js",
     "hash-password": "node scripts/hash-password.js"
   },
